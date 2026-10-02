@@ -1,0 +1,106 @@
+<div class="brands-bar full-width" style="background: {{ section.settings.bg_color }}; color: {{ section.settings.text_color }};">
+  <ul class="brands-bar__list" role="list">
+    {%- for block in section.blocks -%}
+      {%- assign b = block.settings -%}
+      <li class="brands-bar__item" style="--w: {{ b.width }}px; --w-m: {{ b.width_mobile }}px;" {{ block.shopify_attributes }}>
+        {%- if b.link != blank -%}<a href="{{ b.link }}">{%- endif -%}
+
+        {%- if b.logo != blank -%}
+          {{ b.logo | image_url: width: 500 | image_tag: alt: b.name, class: 'brands-bar__logo', loading: 'lazy' }}
+        {%- else -%}
+          {%- comment -%} Dok se ne ubaci logo, prikazuje se naziv brenda {%- endcomment -%}
+          <span class="brands-bar__name">{{ b.name | escape }}</span>
+        {%- endif -%}
+
+        {%- if b.link != blank -%}</a>{%- endif -%}
+      </li>
+    {%- endfor -%}
+  </ul>
+</div>
+
+{% stylesheet %}
+  .brands-bar__list {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 32px;
+    width: min(1240px, 100% - 32px);
+    min-height: 122px;
+    margin: 0 auto;
+    padding: 20px 0;
+    list-style: none;
+  }
+  .brands-bar__item {
+    width: var(--w);
+  }
+  .brands-bar__item a {
+    display: block;
+    color: inherit;
+  }
+  .brands-bar__logo {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+  .brands-bar__name {
+    display: block;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 32px;
+    line-height: 1.1;
+    text-align: center;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ---------- MOBILNI ---------- */
+  @media (max-width: 989px) {
+    .brands-bar__list {
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 20px 32px;
+      min-height: 0;
+      padding: 40px 0;
+    }
+    .brands-bar__item {
+      width: var(--w-m);
+    }
+    .brands-bar__name {
+      font-size: 20px;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Brendovi",
+  "settings": [
+    { "type": "color", "id": "bg_color", "label": "Pozadina", "default": "#000000" },
+    { "type": "color", "id": "text_color", "label": "Boja naziva (dok nema loga)", "default": "#ffffff" }
+  ],
+  "blocks": [
+    {
+      "type": "brand",
+      "name": "Brend",
+      "settings": [
+        { "type": "text", "id": "name", "label": "Naziv brenda", "default": "Brand", "info": "Prikazuje se dok ne ubaciš logo. Koristi se i kao opis slike." },
+        { "type": "image_picker", "id": "logo", "label": "Logo", "info": "Beli logo, providna pozadina (PNG ili SVG)." },
+        { "type": "url", "id": "link", "label": "Link (opciono)" },
+        { "type": "range", "id": "width", "label": "Širina loga (desktop)", "min": 40, "max": 300, "step": 4, "unit": "px", "default": 160 },
+        { "type": "range", "id": "width_mobile", "label": "Širina loga (mobilni)", "min": 30, "max": 200, "step": 2, "unit": "px", "default": 110 }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Brendovi",
+      "blocks": [
+        { "type": "brand", "settings": { "name": "Versace" } },
+        { "type": "brand", "settings": { "name": "Zara" } },
+        { "type": "brand", "settings": { "name": "Gucci" } },
+        { "type": "brand", "settings": { "name": "Prada" } },
+        { "type": "brand", "settings": { "name": "Calvin Klein" } }
+      ]
+    }
+  ]
+}
+{% endschema %}

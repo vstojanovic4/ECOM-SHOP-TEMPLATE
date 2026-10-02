@@ -68,9 +68,63 @@
         "bg_color": "#f2f0f1",
         "show_stars": true
       }
+    },
+    "brands": {
+      "type": "brands",
+      "blocks": {
+        "versace": {
+          "type": "brand",
+          "settings": {
+            "name": "Versace",
+            "width": 164,
+            "width_mobile": 116
+          }
+        },
+        "zara": {
+          "type": "brand",
+          "settings": {
+            "name": "Zara",
+            "width": 88,
+            "width_mobile": 60
+          }
+        },
+        "gucci": {
+          "type": "brand",
+          "settings": {
+            "name": "Gucci",
+            "width": 156,
+            "width_mobile": 108
+          }
+        },
+        "prada": {
+          "type": "brand",
+          "settings": {
+            "name": "Prada",
+            "width": 192,
+            "width_mobile": 126
+          }
+        },
+        "calvin-klein": {
+          "type": "brand",
+          "settings": {
+            "name": "Calvin Klein",
+            "width": 204,
+            "width_mobile": 134
+          }
+        }
+      },
+      "block_order": [
+        "versace",
+        "zara",
+        "gucci",
+        "prada",
+        "calvin-klein"
+      ],
+      "settings": {}
     }
   },
   "order": [
-    "hero"
+    "hero",
+    "brands"
   ]
 }
