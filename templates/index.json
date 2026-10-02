@@ -116,6 +116,7 @@
           "type": "brand",
           "settings": {
             "name": "Calvin Klein",
+            "logo": "shopify://shop_images/Group_1.png",
             "link": "",
             "width": 204,
             "width_mobile": 134
