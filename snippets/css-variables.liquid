@@ -1,4 +1,28 @@
 {% style %}
+  @font-face {
+    font-family: 'Satoshi';
+    src: url('{{ 'satoshi-400.woff2' | asset_url }}') format('woff2');
+    font-weight: 400;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: 'Satoshi';
+    src: url('{{ 'satoshi-500.woff2' | asset_url }}') format('woff2');
+    font-weight: 500;
+    font-display: swap;
+  }
+  {% # Naslovni font (zamena za Integral CF iz Figme) %}
+  @font-face {
+    font-family: 'Archivo';
+    src: url('{{ 'archivo-variable.woff2' | asset_url }}') format('woff2');
+    font-weight: 700 900;
+    font-stretch: 62% 125%;
+    font-display: swap;
+  }
+  :root {
+    --font-heading: 'Archivo', 'Arial Black', sans-serif;
+  }
+
   {% # Loads all font variantions with display: swap %}
   {{ settings.type_primary_font | font_face: font_display: 'swap' }}
   {{ settings.type_primary_font | font_modify: 'weight', 'bold' | font_face: font_display: 'swap' }}

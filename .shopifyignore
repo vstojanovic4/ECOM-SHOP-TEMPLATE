@@ -11,3 +11,7 @@
 #
 # Ignore templates and sections with a regular expression:
 #   /(templates|sections)/.*\.json/
+
+# Privremeni fajlovi editora
+*.tmp.*
+/\.tmp\./

@@ -1,0 +1,48 @@
+<div class="announcement-bar full-width" style="background: {{ section.settings.bg_color }}; color: {{ section.settings.text_color }};">
+  <p class="announcement-bar__text">
+    {{ section.settings.text | escape }}
+    {% if section.settings.link_text != blank %}
+      <a href="{{ section.settings.link }}">{{ section.settings.link_text | escape }}</a>
+    {% endif %}
+  </p>
+</div>
+
+{% stylesheet %}
+  .announcement-bar {
+    padding: 9px 16px;
+    text-align: center;
+  }
+  .announcement-bar__text {
+    font-size: 14px;
+    line-height: 20px;
+  }
+  .announcement-bar__text a {
+    color: inherit;
+    font-weight: 500;
+    text-decoration: underline;
+  }
+
+  @media (max-width: 749px) {
+    .announcement-bar {
+      padding: 10px 16px;
+    }
+    .announcement-bar__text {
+      font-size: 12px;
+      line-height: 16px;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Announcement bar",
+  "settings": [
+    { "type": "text", "id": "text", "label": "Tekst", "default": "Sign up and get 20% off to your first order." },
+    { "type": "text", "id": "link_text", "label": "Tekst linka", "default": "Sign Up Now" },
+    { "type": "url", "id": "link", "label": "Link" },
+    { "type": "color", "id": "bg_color", "label": "Pozadina", "default": "#000000" },
+    { "type": "color", "id": "text_color", "label": "Boja teksta", "default": "#ffffff" }
+  ],
+  "presets": [{ "name": "Announcement bar" }]
+}
+{% endschema %}
