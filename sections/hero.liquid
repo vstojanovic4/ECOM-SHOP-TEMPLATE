@@ -1,0 +1,329 @@
+{%- liquid
+  assign s = section.settings
+-%}
+
+{%- capture star -%}
+  <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 0C50 27.6 72.4 50 100 50 72.4 50 50 72.4 50 100 50 72.4 27.6 50 0 50 27.6 50 50 27.6 50 0Z" fill="currentColor"/></svg>
+{%- endcapture -%}
+
+<section class="hero-banner full-width" style="background: {{ s.bg_color }};">
+
+  {%- comment -%} Desktop: slika je pozadina cele sekcije {%- endcomment -%}
+  <div class="hero-banner__bg">
+    {%- if s.image != blank -%}
+      {{ s.image | image_url: width: 2880 | image_tag: widths: '1440, 2160, 2880', sizes: '100vw', loading: 'eager', fetchpriority: 'high', class: 'hero-banner__bg-img' }}
+    {%- endif -%}
+    {%- if s.show_stars -%}
+      <span class="hero-banner__star hero-banner__star--big">{{ star }}</span>
+      <span class="hero-banner__star hero-banner__star--small">{{ star }}</span>
+    {%- endif -%}
+  </div>
+
+  {%- comment -%} Tekst (blokovi) {%- endcomment -%}
+  <div class="hero-banner__content">
+    {%- for block in section.blocks -%}
+      {%- assign b = block.settings -%}
+      {%- case block.type -%}
+
+        {%- when 'heading' -%}
+          <h1 class="hero-banner__heading" style="--size: {{ b.size }}px; --size-m: {{ b.size_mobile }}px; color: {{ b.color }};" {{ block.shopify_attributes }}>
+            {{- b.text | escape | newline_to_br -}}
+          </h1>
+
+        {%- when 'text' -%}
+          <div class="hero-banner__text" style="--size: {{ b.size }}px; --size-m: {{ b.size_mobile }}px; color: {{ b.color }};" {{ block.shopify_attributes }}>
+            {{ b.text }}
+          </div>
+
+        {%- when 'button' -%}
+          <a class="hero-banner__button" href="{{ b.link | default: '/collections/all' }}" style="background: {{ b.bg_color }}; color: {{ b.text_color }}; border: {{ b.border_width }}px solid {{ b.border_color }};" {{ block.shopify_attributes }}>
+            {{- b.label | escape -}}
+          </a>
+
+        {%- when 'stats' -%}
+          <div class="hero-banner__stats" style="--divider: {{ b.divider_color }};" {{ block.shopify_attributes }}>
+            {%- for i in (1..3) -%}
+              {%- capture number_key -%}number_{{ i }}{%- endcapture -%}
+              {%- capture label_key -%}label_{{ i }}{%- endcapture -%}
+              {%- if b[number_key] != blank -%}
+                <div class="hero-banner__stat">
+                  <p class="hero-banner__stat-number" style="color: {{ b.number_color }};">{{ b[number_key] | escape }}</p>
+                  <p class="hero-banner__stat-label" style="color: {{ b.label_color }};">{{ b[label_key] | escape }}</p>
+                </div>
+              {%- endif -%}
+            {%- endfor -%}
+          </div>
+
+      {%- endcase -%}
+    {%- endfor -%}
+  </div>
+
+  {%- comment -%} Mobilni: slika ispod teksta {%- endcomment -%}
+  <div class="hero-banner__mobile-media">
+    {%- assign mobile_image = s.image_mobile | default: s.image -%}
+    {%- if mobile_image != blank -%}
+      {{ mobile_image | image_url: width: 1200 | image_tag: widths: '400, 800, 1200', sizes: '100vw', class: 'hero-banner__mobile-img' }}
+    {%- endif -%}
+    {%- if s.show_stars -%}
+      <span class="hero-banner__star hero-banner__star--big">{{ star }}</span>
+      <span class="hero-banner__star hero-banner__star--small">{{ star }}</span>
+    {%- endif -%}
+  </div>
+
+</section>
+
+{% stylesheet %}
+  .hero-banner {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ---------- Pozadinska slika (desktop) ---------- */
+  /* Okvir iste proporcije kao slika (1440 x 663), uz desnu ivicu.
+     Zvezdice su u procentima tog okvira, pa uvek stoje na istom mestu na slici. */
+  .hero-banner__bg {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    aspect-ratio: 1440 / 663;
+  }
+  .hero-banner__bg-img {
+    width: 100%;
+    height: 100%;
+  }
+  .hero-banner__star {
+    position: absolute;
+    color: #000;
+  }
+  .hero-banner__star svg {
+    width: 100%;
+    height: auto;
+  }
+  .hero-banner__bg .hero-banner__star--big {
+    top: 13.3%;
+    left: 87.3%;
+    width: 7.2%;
+  }
+  .hero-banner__bg .hero-banner__star--small {
+    top: 45%;
+    left: 52.2%;
+    width: 3.9%;
+  }
+
+  /* ---------- Tekst ---------- */
+  .hero-banner__content {
+    position: relative;
+    width: min(1240px, 100% - 32px);
+    min-height: 663px;
+    margin: 0 auto;
+    padding: 92px 0 116px;
+  }
+  .hero-banner__heading {
+    max-width: 640px;
+    margin: 0 0 24px;
+    font-family: var(--font-heading);
+    font-stretch: 106%;
+    font-size: var(--size);
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .hero-banner__text {
+    max-width: 550px;
+    margin-bottom: 30px;
+    font-size: var(--size);
+    line-height: 1.375;
+  }
+  .hero-banner__text p {
+    margin: 0;
+  }
+  .hero-banner__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 210px;
+    height: 52px;
+    margin-bottom: 48px;
+    border-radius: 62px;
+    font-size: 16px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .hero-banner__stats {
+    display: flex;
+  }
+  .hero-banner__stat {
+    padding: 0 32px;
+  }
+  .hero-banner__stat:first-child {
+    padding-left: 0;
+  }
+  .hero-banner__stat + .hero-banner__stat {
+    border-left: 1px solid var(--divider);
+  }
+  .hero-banner__stat-number {
+    margin: 0;
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 54px;
+    white-space: nowrap;
+  }
+  .hero-banner__stat-label {
+    margin: 0;
+    font-size: 16px;
+    line-height: 22px;
+    white-space: nowrap;
+  }
+
+  /* Mobilna slika je sakrivena na desktopu */
+  .hero-banner__mobile-media {
+    display: none;
+  }
+
+  /* ---------- MOBILNI ---------- */
+  @media (max-width: 1199px) {
+    .hero-banner__bg {
+      display: none;
+    }
+    .hero-banner__content {
+      width: min(600px, 100% - 32px);
+      min-height: 0;
+      padding: 32px 0 20px;
+    }
+    .hero-banner__heading {
+      margin-bottom: 14px;
+      font-size: var(--size-m);
+    }
+    .hero-banner__text {
+      max-width: none;
+      margin-bottom: 16px;
+      font-size: var(--size-m);
+      line-height: 1.43;
+    }
+    .hero-banner__button {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    .hero-banner__stats {
+      flex-wrap: wrap;
+      justify-content: center;
+      row-gap: 12px;
+    }
+    .hero-banner__stat {
+      padding: 0 28px;
+    }
+    .hero-banner__stat:first-child {
+      padding-left: 28px;
+    }
+    /* Treća statistika ide u novi red, na sredinu */
+    .hero-banner__stat:nth-child(3) {
+      flex-basis: 100%;
+      text-align: center;
+      border-left: 0;
+    }
+    .hero-banner__stat-number {
+      font-size: 24px;
+      line-height: 32px;
+    }
+    .hero-banner__stat-label {
+      font-size: 12px;
+      line-height: 16px;
+    }
+
+    .hero-banner__mobile-media {
+      position: relative;
+      display: block;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .hero-banner__mobile-img {
+      width: 100%;
+      height: auto;
+    }
+    .hero-banner__mobile-media .hero-banner__star--big {
+      top: 6.7%;
+      right: 6.2%;
+      width: 19.5%;
+    }
+    .hero-banner__mobile-media .hero-banner__star--small {
+      top: 27.9%;
+      left: 7.2%;
+      width: 11.3%;
+    }
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Hero",
+  "settings": [
+    { "type": "image_picker", "id": "image", "label": "Slika (desktop)", "info": "Pozadina cele sekcije. Preporuka: 2880 × 1326 px." },
+    { "type": "image_picker", "id": "image_mobile", "label": "Slika (mobilni)", "info": "Prikazuje se ispod teksta." },
+    { "type": "color", "id": "bg_color", "label": "Boja pozadine", "default": "#f2f0f1" },
+    { "type": "checkbox", "id": "show_stars", "label": "Prikaži zvezdice", "default": true }
+  ],
+  "blocks": [
+    {
+      "type": "heading",
+      "name": "Naslov",
+      "limit": 1,
+      "settings": [
+        { "type": "textarea", "id": "text", "label": "Tekst", "default": "Find clothes\nthat matches\nyour style", "info": "Enter = novi red." },
+        { "type": "range", "id": "size", "label": "Veličina (desktop)", "min": 24, "max": 96, "step": 2, "unit": "px", "default": 64 },
+        { "type": "range", "id": "size_mobile", "label": "Veličina (mobilni)", "min": 20, "max": 60, "step": 1, "unit": "px", "default": 36 },
+        { "type": "color", "id": "color", "label": "Boja", "default": "#000000" }
+      ]
+    },
+    {
+      "type": "text",
+      "name": "Tekst",
+      "settings": [
+        { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>Browse through our diverse range of meticulously crafted garments, designed to bring out your individuality and cater to your sense of style.</p>" },
+        { "type": "range", "id": "size", "label": "Veličina (desktop)", "min": 12, "max": 24, "step": 1, "unit": "px", "default": 16 },
+        { "type": "range", "id": "size_mobile", "label": "Veličina (mobilni)", "min": 10, "max": 20, "step": 1, "unit": "px", "default": 14 },
+        { "type": "color", "id": "color", "label": "Boja", "default": "#666666" }
+      ]
+    },
+    {
+      "type": "button",
+      "name": "Dugme",
+      "settings": [
+        { "type": "text", "id": "label", "label": "Tekst", "default": "Shop Now" },
+        { "type": "url", "id": "link", "label": "Link" },
+        { "type": "color", "id": "bg_color", "label": "Pozadina", "default": "#000000" },
+        { "type": "color", "id": "text_color", "label": "Boja teksta", "default": "#ffffff" },
+        { "type": "range", "id": "border_width", "label": "Debljina bordera", "min": 0, "max": 5, "step": 1, "unit": "px", "default": 0 },
+        { "type": "color", "id": "border_color", "label": "Boja bordera", "default": "#000000" }
+      ]
+    },
+    {
+      "type": "stats",
+      "name": "Statistike",
+      "limit": 1,
+      "settings": [
+        { "type": "text", "id": "number_1", "label": "Broj 1", "default": "200+" },
+        { "type": "text", "id": "label_1", "label": "Opis 1", "default": "International Brands" },
+        { "type": "text", "id": "number_2", "label": "Broj 2", "default": "2,000+" },
+        { "type": "text", "id": "label_2", "label": "Opis 2", "default": "High-Quality Products" },
+        { "type": "text", "id": "number_3", "label": "Broj 3", "default": "30,000+" },
+        { "type": "text", "id": "label_3", "label": "Opis 3", "default": "Happy Customers" },
+        { "type": "color", "id": "number_color", "label": "Boja brojeva", "default": "#000000" },
+        { "type": "color", "id": "label_color", "label": "Boja opisa", "default": "#666666" },
+        { "type": "color", "id": "divider_color", "label": "Boja linije između", "default": "#dcdadb" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero",
+      "blocks": [
+        { "type": "heading" },
+        { "type": "text" },
+        { "type": "button" },
+        { "type": "stats" }
+      ]
+    }
+  ]
+}
+{% endschema %}

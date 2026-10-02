@@ -9,9 +9,68 @@
  */
 {
   "sections": {
-    
+    "hero": {
+      "type": "hero",
+      "blocks": {
+        "heading": {
+          "type": "heading",
+          "settings": {
+            "text": "Find clothes\nthat matches\nyour style",
+            "size": 64,
+            "size_mobile": 36,
+            "color": "#000000"
+          }
+        },
+        "text": {
+          "type": "text",
+          "settings": {
+            "text": "<p>Browse through our diverse range of meticulously crafted garments, designed to bring out your individuality and cater to your sense of style.</p>",
+            "size": 16,
+            "size_mobile": 14,
+            "color": "#666666"
+          }
+        },
+        "button": {
+          "type": "button",
+          "settings": {
+            "label": "Shop Now",
+            "link": "",
+            "bg_color": "#000000",
+            "text_color": "#ffffff",
+            "border_width": 0,
+            "border_color": "#000000"
+          }
+        },
+        "stats": {
+          "type": "stats",
+          "settings": {
+            "number_1": "200+",
+            "label_1": "International Brands",
+            "number_2": "2,000+",
+            "label_2": "High-Quality Products",
+            "number_3": "30,000+",
+            "label_3": "Happy Customers",
+            "number_color": "#000000",
+            "label_color": "#666666",
+            "divider_color": "#dcdadb"
+          }
+        }
+      },
+      "block_order": [
+        "heading",
+        "text",
+        "button",
+        "stats"
+      ],
+      "settings": {
+        "image": "shopify://shop_images/Rectangle_2.png",
+        "image_mobile": "shopify://shop_images/Rectangle_1.png",
+        "bg_color": "#f2f0f1",
+        "show_stars": true
+      }
+    }
   },
-  "order":[
-    
-  ] 
+  "order": [
+    "hero"
+  ]
 }
