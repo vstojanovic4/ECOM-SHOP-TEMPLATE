@@ -134,10 +134,22 @@
         "bg_color": "#000000",
         "text_color": "#ffffff"
       }
+    },
+    "new-arrivals": {
+      "type": "new-arrivals",
+      "settings": {
+        "heading": "New Arrivals",
+        "collection": "",
+        "products_count": 4,
+        "button_label": "View All",
+        "button_link": "",
+        "show_divider": true
+      }
     }
   },
   "order": [
     "hero",
-    "brands"
+    "brands",
+    "new-arrivals"
   ]
 }
