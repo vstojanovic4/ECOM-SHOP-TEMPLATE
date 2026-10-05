@@ -13,8 +13,32 @@
   "sections": {
     "footer": {
       "type": "footer",
+      "blocks": {
+        "company": { "type": "column", "settings": { "heading": "Company", "menu": "" } },
+        "help": { "type": "column", "settings": { "heading": "Help", "menu": "" } },
+        "faq": { "type": "column", "settings": { "heading": "FAQ", "menu": "" } },
+        "resources": { "type": "column", "settings": { "heading": "Resources", "menu": "" } }
+      },
+      "block_order": [
+        "company",
+        "help",
+        "faq",
+        "resources"
+      ],
       "settings": {
-        "menu": "",
+        "bg_color": "#f0f0f0",
+        "show_newsletter": true,
+        "newsletter_heading": "Stay upto date about our latest offers",
+        "newsletter_placeholder": "Enter your email address",
+        "newsletter_button": "Subscribe to Newsletter",
+        "newsletter_success": "Thanks for subscribing!",
+        "logo_text": "SHOP.CO",
+        "description": "We have clothes that suits your style and which you're proud to wear. From women to men.",
+        "twitter_url": "https://twitter.com",
+        "facebook_url": "https://facebook.com",
+        "instagram_url": "https://instagram.com",
+        "github_url": "https://github.com",
+        "copyright": "Shop.co © 2000-2023, All Rights Reserved",
         "show_payment_icons": true
       }
     }
