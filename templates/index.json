@@ -145,11 +145,23 @@
         "button_link": "",
         "show_divider": true
       }
+    },
+    "top-selling": {
+      "type": "new-arrivals",
+      "settings": {
+        "heading": "Top Selling",
+        "collection": "",
+        "products_count": 4,
+        "button_label": "View All",
+        "button_link": "",
+        "show_divider": false
+      }
     }
   },
   "order": [
     "hero",
     "brands",
-    "new-arrivals"
+    "new-arrivals",
+    "top-selling"
   ]
 }
