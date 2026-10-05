@@ -11,12 +11,21 @@
 
     <ul class="style-grid__list" role="list">
       {%- for block in section.blocks -%}
-        {%- assign b = block.settings -%}
+        {%- liquid
+          assign b = block.settings
+          assign card_class = 'style-grid__card'
+          if b.image_mobile != blank
+            assign card_class = card_class | append: ' style-grid__card--has-mobile'
+          endif
+        -%}
         <li class="style-grid__item" {{ block.shopify_attributes }}>
-          {%- if b.link != blank -%}<a class="style-grid__card" href="{{ b.link }}">{%- else -%}<div class="style-grid__card">{%- endif -%}
+          {%- if b.link != blank -%}<a class="{{ card_class }}" href="{{ b.link }}">{%- else -%}<div class="{{ card_class }}">{%- endif -%}
 
             {%- if b.image != blank -%}
-              {{ b.image | image_url: width: 1400 | image_tag: widths: '400, 700, 1000, 1400', sizes: '(max-width: 989px) 100vw, 700px', loading: 'lazy', class: 'style-grid__img', alt: b.label, style: 'object-position: right top;' }}
+              {{ b.image | image_url: width: 1400 | image_tag: widths: '400, 700, 1000, 1400', sizes: '(max-width: 989px) 100vw, 700px', loading: 'lazy', class: 'style-grid__img style-grid__img--desktop', alt: b.label, style: 'object-position: right top;' }}
+            {%- endif -%}
+            {%- if b.image_mobile != blank -%}
+              {{ b.image_mobile | image_url: width: 1000 | image_tag: widths: '400, 700, 1000', sizes: '100vw', loading: 'lazy', class: 'style-grid__img style-grid__img--mobile', alt: b.label, style: 'object-position: right top;' }}
             {%- endif -%}
             <span class="style-grid__label">{{ b.label | escape }}</span>
 
@@ -85,6 +94,9 @@
   a.style-grid__card:hover .style-grid__img {
     transform: scale(1.04);
   }
+  .style-grid__img--mobile {
+    display: none;
+  }
   .style-grid__label {
     position: absolute;
     top: 25px;
@@ -118,6 +130,13 @@
     .style-grid__card {
       height: 190px;
     }
+    /* Ako kartica ima mobilnu sliku, desktop slika se ovde sakriva */
+    .style-grid__card--has-mobile .style-grid__img--desktop {
+      display: none;
+    }
+    .style-grid__img--mobile {
+      display: block;
+    }
     .style-grid__label {
       top: 16px;
       left: 24px;
@@ -139,7 +158,8 @@
       "name": "Stil",
       "settings": [
         { "type": "text", "id": "label", "label": "Naziv", "default": "Casual" },
-        { "type": "image_picker", "id": "image", "label": "Slika", "info": "Slika se poravnava uz desni gornji ugao kartice." },
+        { "type": "image_picker", "id": "image", "label": "Slika (desktop)", "info": "Slika se poravnava uz desni gornji ugao kartice." },
+        { "type": "image_picker", "id": "image_mobile", "label": "Slika (mobilni)", "info": "Opciono. Ako je prazno, koristi se desktop slika." },
         { "type": "url", "id": "link", "label": "Link", "info": "Npr. kolekcija tog stila." }
       ]
     }
