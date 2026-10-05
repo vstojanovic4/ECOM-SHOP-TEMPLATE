@@ -1,50 +1,681 @@
 {% comment %}
-  This section is used in the product template to render product page with
-  media, content, and add-to-cart form.
-
-  https://shopify.dev/docs/storefronts/themes/architecture/templates/product
+  Glavni deo strane proizvoda (po Figma dizajnu):
+  putanja, galerija, naziv, ocena, cena, opis, opcije (boja / veličina), količina i Add to Cart.
 {% endcomment %}
 
-<div class="product-images">
-  {% for image in product.images %}
-    {% render 'image', class: 'product-image', image: image %}
-  {% endfor %}
+{%- liquid
+  assign s = section.settings
+  assign current_variant = product.selected_or_first_available_variant
+  assign rating = product.metafields.reviews.rating.value
+  assign color_names = 'color,colour,boja'
+-%}
+
+{%- capture star -%}
+  <svg viewBox="0 0 20 19" aria-hidden="true"><path d="M10 0l2.94 6.06 6.56.92-4.79 4.62 1.17 6.56L10 15.04 4.12 18.16l1.17-6.56L.5 6.98l6.56-.92L10 0z" fill="currentColor"/></svg>
+{%- endcapture -%}
+
+{%- capture chevron -%}
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endcapture -%}
+
+<div class="pdp full-width" data-pdp>
+  <div class="pdp__inner">
+
+    {%- comment -%} Putanja (breadcrumbs) {%- endcomment -%}
+    <nav class="pdp__breadcrumbs" aria-label="Putanja">
+      <a href="{{ routes.root_url }}">Home</a>{{ chevron }}
+      <a href="{{ routes.all_products_collection_url }}">Shop</a>{{ chevron }}
+      {%- if collection -%}
+        <a href="{{ collection.url }}">{{ collection.title | escape }}</a>{{ chevron }}
+      {%- elsif product.type != blank -%}
+        <a href="{{ product.type | url_for_type }}">{{ product.type | escape }}</a>{{ chevron }}
+      {%- endif -%}
+      <span aria-current="page">{{ product.title | escape }}</span>
+    </nav>
+
+    <div class="pdp__grid">
+
+      {%- comment -%} Galerija: male slike + velika slika {%- endcomment -%}
+      <div class="pdp__gallery">
+        <div class="pdp__main-media">
+          {%- for media in product.media -%}
+            {%- if media.media_type == 'image' -%}
+              <div class="pdp__main-item{% if forloop.first %} is-active{% endif %}" data-media-id="{{ media.id }}">
+                {%- liquid
+                  if forloop.first
+                    assign loading = 'eager'
+                  else
+                    assign loading = 'lazy'
+                  endif
+                -%}
+                {{ media | image_url: width: 1100 | image_tag: widths: '450, 700, 900, 1100', sizes: '(max-width: 989px) 100vw, 444px', loading: loading, class: 'pdp__main-img' }}
+              </div>
+            {%- endif -%}
+          {%- else -%}
+            <div class="pdp__main-item is-active">{{ 'product-apparel-1' | placeholder_svg_tag: 'pdp__main-img' }}</div>
+          {%- endfor -%}
+        </div>
+
+        {%- if product.media.size > 1 -%}
+          <ul class="pdp__thumbs" role="list">
+            {%- for media in product.media -%}
+              {%- if media.media_type == 'image' -%}
+                <li>
+                  <button type="button" class="pdp__thumb{% if forloop.first %} is-active{% endif %}" data-thumb="{{ media.id }}" aria-label="Slika {{ forloop.index }}">
+                    {{ media | image_url: width: 320 | image_tag: widths: '160, 320', sizes: '152px', loading: 'lazy', class: 'pdp__thumb-img' }}
+                  </button>
+                </li>
+              {%- endif -%}
+            {%- endfor -%}
+          </ul>
+        {%- endif -%}
+      </div>
+
+      {%- comment -%} Informacije i forma {%- endcomment -%}
+      <div class="pdp__info">
+        <h1 class="pdp__title">{{ product.title | escape }}</h1>
+
+        {%- if rating != blank -%}
+          {%- assign rating_full = rating.rating | floor -%}
+          {%- assign rating_frac = rating.rating | minus: rating_full -%}
+          <div class="pdp__rating">
+            <span class="pdp__stars" style="--full: {{ rating_full }}; --frac: {{ rating_frac }};" aria-label="{{ rating.rating }} / {{ rating.scale_max }}">
+              <span class="pdp__stars-fill">{% for i in (1..5) %}{{ star }}{% endfor %}</span>
+            </span>
+            <span class="pdp__rating-text">{{ rating.rating | round: 1 }}/<span>{{ rating.scale_max | round }}</span></span>
+          </div>
+        {%- endif -%}
+
+        {%- liquid
+          assign discount = 0
+          if current_variant.compare_at_price > current_variant.price
+            assign discount = current_variant.compare_at_price | minus: current_variant.price | times: 100.0 | divided_by: current_variant.compare_at_price | round
+          endif
+        -%}
+        <div class="pdp__price">
+          <span data-price>{{ current_variant.price | money_without_trailing_zeros }}</span>
+          <s class="pdp__compare" data-compare{% if discount == 0 %} hidden{% endif %}>{{ current_variant.compare_at_price | money_without_trailing_zeros }}</s>
+          <span class="pdp__badge" data-badge{% if discount == 0 %} hidden{% endif %}>-{{ discount }}%</span>
+        </div>
+
+        {%- if product.description != blank -%}
+          <div class="pdp__description">{{ product.description }}</div>
+        {%- endif -%}
+
+        {%- form 'product', product, class: 'pdp__form' -%}
+          <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id>
+
+          {%- unless product.has_only_default_variant -%}
+            {%- for option in product.options_with_values -%}
+              {%- assign option_name = option.name | downcase -%}
+              {%- assign is_color = false -%}
+              {%- if color_names contains option_name -%}{%- assign is_color = true -%}{%- endif -%}
+
+              <fieldset class="pdp__option" data-option-index="{{ forloop.index0 }}">
+                <legend class="pdp__option-label">
+                  {%- if is_color -%}{{ s.color_label | escape }}{%- elsif option_name == 'size' -%}{{ s.size_label | escape }}{%- else -%}{{ option.name | escape }}{%- endif -%}
+                </legend>
+
+                <div class="{% if is_color %}pdp__swatches{% else %}pdp__pills{% endif %}">
+                  {%- for value in option.values -%}
+                    {%- liquid
+                      assign input_id = section.id | append: '-' | append: forloop.parentloop.index0 | append: '-' | append: forloop.index0
+                      assign swatch_color = value.swatch.color | default: value
+                      assign swatch_color = swatch_color | downcase | remove: ' '
+                    -%}
+                    <input type="radio" class="pdp__radio" id="{{ input_id }}" name="option-{{ forloop.parentloop.index0 }}" value="{{ value | escape }}"{% if value == option.selected_value %} checked{% endif %}>
+                    {%- if is_color -%}
+                      <label for="{{ input_id }}" class="pdp__swatch" style="--swatch: {{ swatch_color }};" title="{{ value | escape }}">
+                        <span class="visually-hidden">{{ value | escape }}</span>
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </label>
+                    {%- else -%}
+                      <label for="{{ input_id }}" class="pdp__pill">{{ value | escape }}</label>
+                    {%- endif -%}
+                  {%- endfor -%}
+                </div>
+              </fieldset>
+            {%- endfor -%}
+          {%- endunless -%}
+
+          <div class="pdp__buy">
+            <div class="pdp__qty">
+              <button type="button" class="pdp__qty-btn" data-qty="-1" aria-label="Smanji količinu">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </button>
+              <input type="number" name="quantity" value="1" min="1" class="pdp__qty-input" aria-label="Količina">
+              <button type="button" class="pdp__qty-btn" data-qty="1" aria-label="Povećaj količinu">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+              </button>
+            </div>
+            <button type="submit" class="pdp__add" data-add{% unless current_variant.available %} disabled{% endunless %}>
+              {%- if current_variant.available -%}{{ s.add_label | escape }}{%- else -%}{{ s.sold_out_label | escape }}{%- endif -%}
+            </button>
+          </div>
+        {%- endform -%}
+      </div>
+    </div>
+  </div>
+
+  {%- comment -%} Podaci o varijantama za JS (cene su već formatirane u Liquidu) {%- endcomment -%}
+  <script type="application/json" data-variants>
+    [
+      {%- for variant in product.variants -%}
+        {%- liquid
+          assign v_discount = 0
+          if variant.compare_at_price > variant.price
+            assign v_discount = variant.compare_at_price | minus: variant.price | times: 100.0 | divided_by: variant.compare_at_price | round
+          endif
+        -%}
+        {
+          "id": {{ variant.id }},
+          "options": {{ variant.options | json }},
+          "available": {{ variant.available | json }},
+          "price": {{ variant.price | money_without_trailing_zeros | json }},
+          "compare": {{ variant.compare_at_price | money_without_trailing_zeros | json }},
+          "discount": {{ v_discount }},
+          "media": {{ variant.featured_media.id | default: 'null' }}
+        }{% unless forloop.last %},{% endunless %}
+      {%- endfor -%}
+    ]
+  </script>
+  <script type="application/json" data-labels>
+    [{{ s.add_label | json }}, {{ s.sold_out_label | json }}, {{ s.unavailable_label | json }}]
+  </script>
 </div>
 
-<div class="product-info">
-  <h1>{{ product.title }}</h1>
-  <p>{{ product.price | money }}</p>
-  <p>{{ product.description }}</p>
-</div>
+{% stylesheet %}
+  .pdp__inner {
+    width: min(1240px, 100% - 32px);
+    margin: 0 auto;
+    padding: 24px 0 0;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .pdp .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
 
-<div class="product-form">
-  {% form 'product', product %}
-    {% assign current_variant = product.selected_or_first_available_variant %}
+  /* ---------- Putanja ---------- */
+  .pdp__breadcrumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 4px;
+    margin-bottom: 36px;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .pdp__breadcrumbs a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .pdp__breadcrumbs a:hover {
+    color: #000;
+  }
+  .pdp__breadcrumbs svg {
+    width: 16px;
+    height: 16px;
+    margin: 0 4px;
+  }
+  .pdp__breadcrumbs [aria-current] {
+    color: #000;
+  }
 
-    <select name="id">
-      {% for variant in product.variants %}
-        <option
-          value="{{ variant.id }}"
-          {% if variant == current_variant %}
-            selected="selected"
-          {% endif %}
-        >
-          {{ variant.title }} - {{ variant.price | money }}
-        </option>
-      {% endfor %}
-    </select>
+  /* ---------- Raspored ---------- */
+  .pdp__grid {
+    display: grid;
+    grid-template-columns: 610px 1fr;
+    gap: 40px;
+    align-items: start;
+  }
 
-    <input type="text" name="quantity" min="1" value="1">
+  /* ---------- Galerija ---------- */
+  .pdp__gallery {
+    display: flex;
+    flex-direction: row-reverse;
+    gap: 14px;
+  }
+  .pdp__main-media {
+    flex: 1;
+    min-width: 0;
+  }
+  .pdp__main-item {
+    display: none;
+    aspect-ratio: 444 / 530;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #f0eeed;
+  }
+  .pdp__main-item.is-active {
+    display: block;
+  }
+  /* Bez malih slika velika slika zauzima celu širinu, ali zadržava visinu iz dizajna */
+  .pdp__gallery:not(:has(.pdp__thumbs)) .pdp__main-item {
+    aspect-ratio: 610 / 530;
+  }
+  .pdp__main-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pdp__thumbs {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 152px;
+    max-height: 530px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+    scrollbar-width: none;
+  }
+  .pdp__thumb {
+    display: block;
+    width: 100%;
+    aspect-ratio: 152 / 167;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 20px;
+    background: #f0eeed;
+    cursor: pointer;
+  }
+  .pdp__thumb.is-active {
+    border-color: #000;
+  }
+  .pdp__thumb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-    <input type="submit" value="Add to cart">
-    {{ form | payment_button }}
-  {% endform %}
-</div>
+  /* ---------- Informacije ---------- */
+  .pdp__title {
+    margin: 0 0 14px;
+    font-family: var(--font-heading);
+    font-stretch: 106%;
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #000;
+    text-transform: uppercase;
+  }
+  .pdp__rating {
+    --star: 24px;
+    --star-gap: 7px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+  .pdp__stars {
+    display: block;
+    width: calc(5 * var(--star) + 4 * var(--star-gap));
+  }
+  .pdp__stars-fill {
+    display: flex;
+    gap: var(--star-gap);
+    width: calc(var(--full) * (var(--star) + var(--star-gap)) + var(--frac) * var(--star));
+    overflow: hidden;
+    color: #ffc633;
+  }
+  .pdp__stars-fill svg {
+    flex: 0 0 var(--star);
+    width: var(--star);
+    height: var(--star);
+  }
+  .pdp__rating-text {
+    font-size: 16px;
+  }
+  .pdp__rating-text span {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .pdp__price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    font-size: 32px;
+    font-weight: 700;
+    color: #000;
+  }
+  .pdp__compare {
+    color: rgba(0, 0, 0, 0.3);
+  }
+  .pdp__badge {
+    padding: 6px 14px;
+    border-radius: 62px;
+    background: rgba(255, 51, 51, 0.1);
+    color: #f33;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .pdp__compare[hidden],
+  .pdp__badge[hidden] {
+    display: none;
+  }
+  .pdp__description {
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 16px;
+    line-height: 22px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .pdp__description p {
+    margin: 0;
+  }
+
+  /* ---------- Opcije ---------- */
+  .pdp__option {
+    margin: 0;
+    padding: 24px 0;
+    border: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .pdp__option-label {
+    margin-bottom: 16px;
+    padding: 0;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .pdp__radio {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .pdp__swatches,
+  .pdp__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px 12px;
+  }
+  .pdp__swatches {
+    gap: 16px;
+  }
+  .pdp__swatch {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 37px;
+    height: 37px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    background: var(--swatch, #ccc);
+    color: #fff;
+    cursor: pointer;
+  }
+  .pdp__swatch svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0;
+  }
+  .pdp__radio:checked + .pdp__swatch svg {
+    opacity: 1;
+  }
+  .pdp__pill {
+    display: inline-flex;
+    align-items: center;
+    height: 46px;
+    padding: 0 24px;
+    border-radius: 62px;
+    background: #f0f0f0;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .pdp__radio:checked + .pdp__pill {
+    background: #000;
+    color: #fff;
+  }
+  .pdp__radio:focus-visible + label {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+
+  /* ---------- Količina i dugme ---------- */
+  .pdp__buy {
+    display: flex;
+    gap: 20px;
+    padding-top: 24px;
+  }
+  .pdp__qty {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 170px;
+    height: 52px;
+    padding: 0 16px;
+    border-radius: 62px;
+    background: #f0f0f0;
+    flex-shrink: 0;
+  }
+  .pdp__qty-btn {
+    display: flex;
+    padding: 4px;
+    border: 0;
+    background: none;
+    color: #000;
+    cursor: pointer;
+  }
+  .pdp__qty-btn svg {
+    width: 24px;
+    height: 24px;
+  }
+  .pdp__qty-input {
+    width: 40px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    font-size: 16px;
+    font-weight: 500;
+    text-align: center;
+    -moz-appearance: textfield;
+  }
+  .pdp__qty-input::-webkit-inner-spin-button,
+  .pdp__qty-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+  }
+  .pdp__add {
+    flex: 1;
+    height: 52px;
+    border: 0;
+    border-radius: 62px;
+    background: #000;
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .pdp__add:disabled {
+    background: rgba(0, 0, 0, 0.3);
+    cursor: not-allowed;
+  }
+
+  /* ---------- MOBILNI ---------- */
+  @media (max-width: 989px) {
+    .pdp__breadcrumbs {
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .pdp__breadcrumbs svg {
+      width: 14px;
+      height: 14px;
+      margin: 0 2px;
+    }
+    .pdp__grid {
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    .pdp__gallery {
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pdp__main-item,
+    .pdp__gallery:not(:has(.pdp__thumbs)) .pdp__main-item {
+      aspect-ratio: 358 / 290;
+    }
+    .pdp__thumbs {
+      flex-direction: row;
+      gap: 12px;
+      width: auto;
+      max-height: none;
+      overflow-x: auto;
+      overflow-y: visible;
+    }
+    .pdp__thumbs li {
+      flex: 0 0 calc((100% - 24px) / 3);
+    }
+    .pdp__thumb {
+      aspect-ratio: 111 / 106;
+    }
+    .pdp__title {
+      margin-bottom: 12px;
+      font-size: 24px;
+    }
+    .pdp__rating {
+      --star: 18px;
+      --star-gap: 5px;
+      gap: 11px;
+      margin-bottom: 12px;
+    }
+    .pdp__rating-text {
+      font-size: 14px;
+    }
+    .pdp__price {
+      gap: 10px;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+    .pdp__badge {
+      padding: 6px 14px;
+      font-size: 12px;
+    }
+    .pdp__description {
+      padding-bottom: 24px;
+      font-size: 14px;
+      line-height: 20px;
+    }
+    .pdp__option {
+      padding: 24px 0;
+    }
+    .pdp__option-label {
+      font-size: 14px;
+    }
+    .pdp__swatches {
+      gap: 12px;
+    }
+    .pdp__pills {
+      gap: 8px;
+    }
+    .pdp__pill {
+      height: 39px;
+      padding: 0 20px;
+      font-size: 14px;
+    }
+    .pdp__buy {
+      gap: 12px;
+    }
+    .pdp__qty {
+      width: 110px;
+      height: 44px;
+      padding: 0 12px;
+    }
+    .pdp__qty-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+    .pdp__qty-input {
+      font-size: 14px;
+    }
+    .pdp__add {
+      height: 44px;
+      font-size: 14px;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  document.querySelectorAll('[data-pdp]').forEach((pdp) => {
+    const variants = JSON.parse(pdp.querySelector('[data-variants]').textContent);
+    const [addLabel, soldOutLabel, unavailableLabel] = JSON.parse(pdp.querySelector('[data-labels]').textContent);
+    const form = pdp.querySelector('.pdp__form');
+    const idInput = pdp.querySelector('[data-variant-id]');
+    const addButton = pdp.querySelector('[data-add]');
+
+    // Galerija: klik na malu sliku menja veliku
+    const showMedia = (mediaId) => {
+      if (!mediaId) return;
+      const item = pdp.querySelector(`.pdp__main-item[data-media-id="${mediaId}"]`);
+      if (!item) return;
+      pdp.querySelectorAll('.pdp__main-item, .pdp__thumb').forEach((el) => el.classList.remove('is-active'));
+      item.classList.add('is-active');
+      pdp.querySelector(`[data-thumb="${mediaId}"]`)?.classList.add('is-active');
+    };
+    pdp.querySelectorAll('[data-thumb]').forEach((thumb) => {
+      thumb.addEventListener('click', () => showMedia(thumb.dataset.thumb));
+    });
+
+    // Količina: dugmad - i +
+    const qtyInput = pdp.querySelector('.pdp__qty-input');
+    pdp.querySelectorAll('[data-qty]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const next = (parseInt(qtyInput.value, 10) || 1) + parseInt(button.dataset.qty, 10);
+        qtyInput.value = Math.max(1, next);
+      });
+    });
+
+    // Opcije: pronađi varijantu koja odgovara izabranim vrednostima
+    form.addEventListener('change', (event) => {
+      if (!event.target.classList.contains('pdp__radio')) return;
+
+      const selected = [...form.querySelectorAll('.pdp__option')].map(
+        (fieldset) => fieldset.querySelector('.pdp__radio:checked')?.value
+      );
+      const variant = variants.find((v) => v.options.every((value, i) => value === selected[i]));
+
+      if (!variant) {
+        addButton.disabled = true;
+        addButton.textContent = unavailableLabel;
+        return;
+      }
+
+      idInput.value = variant.id;
+      addButton.disabled = !variant.available;
+      addButton.textContent = variant.available ? addLabel : soldOutLabel;
+
+      pdp.querySelector('[data-price]').textContent = variant.price;
+      const compare = pdp.querySelector('[data-compare]');
+      const badge = pdp.querySelector('[data-badge]');
+      compare.hidden = badge.hidden = variant.discount === 0;
+      compare.textContent = variant.compare;
+      badge.textContent = `-${variant.discount}%`;
+
+      showMedia(variant.media);
+
+      const url = new URL(window.location.href);
+      url.searchParams.set('variant', variant.id);
+      window.history.replaceState({}, '', url);
+    });
+  });
+{% endjavascript %}
 
 {% schema %}
 {
   "name": "t:general.product",
-  "settings": [],
+  "settings": [
+    { "type": "text", "id": "color_label", "label": "Naslov za boje", "default": "Select Colors" },
+    { "type": "text", "id": "size_label", "label": "Naslov za veličine", "default": "Choose Size" },
+    { "type": "text", "id": "add_label", "label": "Tekst dugmeta", "default": "Add to Cart" },
+    { "type": "text", "id": "sold_out_label", "label": "Tekst kad je rasprodato", "default": "Sold out" },
+    { "type": "text", "id": "unavailable_label", "label": "Tekst kad kombinacija ne postoji", "default": "Unavailable" }
+  ],
   "disabled_on": {
     "groups": ["header", "footer"]
   }
