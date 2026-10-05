@@ -7,7 +7,7 @@
  * made to this file may be overwritten.
  * ------------------------------------------------------------
  */
-{
+ {
   "sections": {
     "hero": {
       "type": "hero",
@@ -160,10 +160,38 @@
     "dress-style": {
       "type": "dress-style",
       "blocks": {
-        "casual": { "type": "style", "settings": { "label": "Casual", "link": "" } },
-        "formal": { "type": "style", "settings": { "label": "Formal", "link": "" } },
-        "party": { "type": "style", "settings": { "label": "Party", "link": "" } },
-        "gym": { "type": "style", "settings": { "label": "Gym", "link": "" } }
+        "casual": {
+          "type": "style",
+          "settings": {
+            "label": "Casual",
+            "image": "shopify://shop_images/image_11_9ab55d27-9456-4e71-a806-8dfb05184c52.png",
+            "link": ""
+          }
+        },
+        "formal": {
+          "type": "style",
+          "settings": {
+            "label": "Formal",
+            "image": "shopify://shop_images/image_13.png",
+            "link": ""
+          }
+        },
+        "party": {
+          "type": "style",
+          "settings": {
+            "label": "Party",
+            "image": "shopify://shop_images/image_12.png",
+            "link": ""
+          }
+        },
+        "gym": {
+          "type": "style",
+          "settings": {
+            "label": "Gym",
+            "image": "shopify://shop_images/image_14_0c97fe19-fb74-4b46-b2a0-e1c5a7eb2ce1.png",
+            "link": ""
+          }
+        }
       },
       "block_order": [
         "casual",
