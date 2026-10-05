@@ -1,6 +1,34 @@
 {%- liquid
   assign s = section.settings
-  assign products = s.collection.products
+  assign current_id = product.id
+
+  # Odakle dolaze proizvodi:
+  # - Shopify preporuke (kad JS učita sekciju preko recommendations adrese)
+  # - kolekcija iz metafielda trenutnog proizvoda (checkbox uključen)
+  # - kolekcija izabrana u editoru (checkbox isključen)
+  if recommendations.performed?
+    assign source_collection = blank
+    assign items = recommendations.products
+  elsif s.use_product_metafield
+    assign source_collection = product.metafields.custom.you_might_also_like.value
+    assign items = source_collection.products
+  else
+    assign source_collection = s.collection
+    assign items = s.collection.products
+  endif
+
+  # Koliko proizvoda ima za prikaz (bez proizvoda na čijoj smo strani)
+  assign visible_count = 0
+  for item in items
+    if item.id != current_id
+      assign visible_count = visible_count | plus: 1
+    endif
+  endfor
+
+  assign from_product = false
+  if s.use_product_metafield or recommendations.performed?
+    assign from_product = true
+  endif
 -%}
 
 {%- comment -%} Jedna zvezdica (puna); pola zvezdice se dobija sečenjem sloja {%- endcomment -%}
@@ -8,7 +36,17 @@
   <svg viewBox="0 0 20 19" aria-hidden="true"><path d="M10 0l2.94 6.06 6.56.92-4.79 4.62 1.17 6.56L10 15.04 4.12 18.16l1.17-6.56L.5 6.98l6.56-.92L10 0z" fill="currentColor"/></svg>
 {%- endcapture -%}
 
-<section class="product-row full-width">
+{%- if visible_count == 0 and from_product -%}
+  {%- comment -%}
+    Metafield je prazan: JS pokušava Shopify preporuke.
+    Ako ni njih nema (ili nismo na strani proizvoda), sekcija se ne prikazuje uopšte.
+  {%- endcomment -%}
+  {%- unless recommendations.performed? or product == nil -%}
+    <div class="product-row full-width" hidden data-product-recommendations data-url="{{ routes.product_recommendations_url }}?section_id={{ section.id }}&product_id={{ product.id }}&limit={{ s.products_count }}&intent=related"></div>
+  {%- endunless -%}
+{%- else -%}
+{%- comment -%} Bez dugmeta i linije sekciji treba razmak ispod (npr. pre newslettera) {%- endcomment -%}
+<section class="product-row full-width{% if s.button_label == blank and s.show_divider == false %} product-row--spaced{% endif %}">
   <div class="product-row__inner">
 
     {%- if s.heading != blank -%}
@@ -16,26 +54,35 @@
     {%- endif -%}
 
     <ul class="product-row__list" role="list">
-      {%- if s.collection != blank and products.size > 0 -%}
-        {%- for product in products limit: s.products_count -%}
+      {%- if visible_count > 0 -%}
+        {%- assign shown = 0 -%}
+        {%- for item in items -%}
           {%- liquid
-            assign rating = product.metafields.reviews.rating.value
+            if item.id == current_id
+              continue
+            endif
+            if shown >= s.products_count
+              break
+            endif
+            assign shown = shown | plus: 1
+
+            assign rating = item.metafields.reviews.rating.value
             assign discount = 0
-            if product.compare_at_price > product.price
-              assign discount = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round
+            if item.compare_at_price > item.price
+              assign discount = item.compare_at_price | minus: item.price | times: 100.0 | divided_by: item.compare_at_price | round
             endif
           -%}
           <li class="product-row__card">
-            <a class="product-row__link" href="{{ product.url }}">
+            <a class="product-row__link" href="{{ item.url }}">
               <div class="product-row__media">
-                {%- if product.featured_image -%}
-                  {{ product.featured_image | image_url: width: 600 | image_tag: widths: '300, 450, 600', sizes: '(max-width: 989px) 198px, 295px', loading: 'lazy', class: 'product-row__img' }}
+                {%- if item.featured_image -%}
+                  {{ item.featured_image | image_url: width: 600 | image_tag: widths: '300, 450, 600', sizes: '(max-width: 989px) 198px, 295px', loading: 'lazy', class: 'product-row__img' }}
                 {%- else -%}
                   {{ 'product-apparel-1' | placeholder_svg_tag: 'product-row__img' }}
                 {%- endif -%}
               </div>
 
-              <h3 class="product-row__title">{{ product.title | escape }}</h3>
+              <h3 class="product-row__title">{{ item.title | escape }}</h3>
 
               {%- if rating != blank -%}
                 {%- assign rating_full = rating.rating | floor -%}{%- assign rating_frac = rating.rating | minus: rating_full -%}
@@ -48,9 +95,9 @@
               {%- endif -%}
 
               <div class="product-row__price">
-                <span>{{ product.price | money_without_trailing_zeros }}</span>
+                <span>{{ item.price | money_without_trailing_zeros }}</span>
                 {%- if discount > 0 -%}
-                  <s class="product-row__compare">{{ product.compare_at_price | money_without_trailing_zeros }}</s>
+                  <s class="product-row__compare">{{ item.compare_at_price | money_without_trailing_zeros }}</s>
                   <span class="product-row__badge">-{{ discount }}%</span>
                 {%- endif -%}
               </div>
@@ -92,7 +139,7 @@
     </ul>
 
     {%- if s.button_label != blank -%}
-      {%- assign button_link = s.button_link | default: s.collection.url | default: '/collections/all' -%}
+      {%- assign button_link = s.button_link | default: source_collection.url | default: '/collections/all' -%}
       <div class="product-row__actions">
         <a class="product-row__button" href="{{ button_link }}">{{ s.button_label | escape }}</a>
       </div>
@@ -103,12 +150,16 @@
     {%- endif -%}
   </div>
 </section>
+{%- endif -%}
 
 {% stylesheet %}
   .product-row__inner {
     width: min(1240px, 100% - 32px);
     margin: 0 auto;
     padding-top: 72px;
+  }
+  .product-row--spaced .product-row__inner {
+    padding-bottom: 80px;
   }
   .product-row__heading {
     margin: 0 0 55px;
@@ -239,6 +290,9 @@
     .product-row__inner {
       padding-top: 50px;
     }
+    .product-row--spaced .product-row__inner {
+      padding-bottom: 50px;
+    }
     .product-row__heading {
       margin-bottom: 32px;
       font-size: 32px;
@@ -296,12 +350,32 @@
   }
 {% endstylesheet %}
 
+{% javascript %}
+  // Metafield je prazan: učitaj Shopify preporuke u istu sekciju, ili je ukloni ako ih nema
+  document.querySelectorAll('[data-product-recommendations]').forEach(async (placeholder) => {
+    const removeSection = () => (placeholder.closest('.shopify-section') || placeholder).remove();
+    try {
+      const response = await fetch(placeholder.dataset.url);
+      const html = new DOMParser().parseFromString(await response.text(), 'text/html');
+      const filled = html.querySelector('.product-row');
+      if (filled && filled.querySelector('.product-row__card')) {
+        placeholder.replaceWith(filled);
+      } else {
+        removeSection();
+      }
+    } catch (error) {
+      removeSection();
+    }
+  });
+{% endjavascript %}
+
 {% schema %}
 {
   "name": "Proizvodi (red)",
   "settings": [
     { "type": "text", "id": "heading", "label": "Naslov", "default": "New Arrivals" },
-    { "type": "collection", "id": "collection", "label": "Kolekcija", "info": "Dok ne izabereš kolekciju, prikazuju se primer-kartice." },
+    { "type": "checkbox", "id": "use_product_metafield", "label": "Proizvodi iz metafielda proizvoda", "default": false, "info": "Samo za stranu proizvoda: uzima kolekciju iz metafielda „You might also like“ i preskače trenutni proizvod. Ako je prazno, prikazuju se Shopify preporuke, a ako ni njih nema, sekcija se sakriva." },
+    { "type": "collection", "id": "collection", "label": "Kolekcija", "info": "Koristi se kad je checkbox iznad isključen. Dok ne izabereš kolekciju, prikazuju se primer-kartice." },
     { "type": "range", "id": "products_count", "label": "Broj proizvoda", "min": 2, "max": 8, "step": 1, "default": 4 },
     { "type": "text", "id": "button_label", "label": "Tekst dugmeta", "default": "View All", "info": "Ostavi prazno da sakriješ dugme." },
     { "type": "url", "id": "button_link", "label": "Link dugmeta", "info": "Ako je prazno, vodi na izabranu kolekciju." },

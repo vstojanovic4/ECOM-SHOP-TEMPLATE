@@ -12,9 +12,22 @@
     "main": {
       "type": "product",
       "settings": {}
+    },
+    "you-might-also-like": {
+      "type": "new-arrivals",
+      "settings": {
+        "heading": "You might also like",
+        "use_product_metafield": true,
+        "collection": "",
+        "products_count": 4,
+        "button_label": "",
+        "button_link": "",
+        "show_divider": false
+      }
     }
   },
   "order": [
-    "main"
+    "main",
+    "you-might-also-like"
   ]
 }
