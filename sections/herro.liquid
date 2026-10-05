@@ -1,0 +1,247 @@
+<section class="hero{% if section.settings.image_mobile == blank %} hero--no-mobile{% endif %}" style="--hero-text: {{ section.settings.text_color }}; --hero-bg: {{ section.settings.bg_color }}; --hero-btn-bg: {{ section.settings.button_bg }}; --hero-btn-text: {{ section.settings.button_text_color }}; --hero-min-h: {{ section.settings.min_height }}px; --hero-min-h-m: {{ section.settings.min_height_mobile }}px;">
+
+  {%- if section.settings.image_desktop != blank -%}
+    <picture class="hero__bg">
+      {%- if section.settings.image_mobile != blank -%}
+        <source media="(max-width: 749px)" srcset="{{ section.settings.image_mobile | image_url: width: 1000 }}">
+      {%- endif -%}
+      <img src="{{ section.settings.image_desktop | image_url: width: 2400 }}" width="2400" height="1000" alt="{{ section.settings.image_desktop.alt | escape }}" loading="eager" fetchpriority="high">
+    </picture>
+  {%- endif -%}
+
+  <div class="hero__content">
+
+    <div class="hero__top">
+      {%- if section.settings.badge_image != blank or section.settings.badge_text != blank -%}
+        <div class="hero__badge">
+          {%- if section.settings.badge_image != blank -%}
+            <img class="hero__badge-img" src="{{ section.settings.badge_image | image_url: width: 400 }}" alt="{{ section.settings.badge_image.alt | escape }}" loading="eager">
+          {%- endif -%}
+          {%- if section.settings.badge_text != blank -%}
+            <p class="hero__badge-text">{{ section.settings.badge_text }}</p>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+
+      {%- if section.settings.heading != blank -%}
+        <h1 class="hero__heading">{{ section.settings.heading | escape | newline_to_br }}</h1>
+      {%- endif -%}
+    </div>
+
+    <div class="hero__bottom">
+      {%- if section.settings.subheading != blank -%}
+        <div class="hero__subheading">{{ section.settings.subheading }}</div>
+      {%- endif -%}
+
+      {%- if section.settings.price_new != blank -%}
+        <p class="hero__price">
+          {{ section.settings.price_label_new }} {{ section.settings.price_new }}
+          {%- if section.settings.price_old != blank -%}
+            <span class="hero__price-old">{{ section.settings.price_label_old }} <s>{{ section.settings.price_old }}</s></span>
+          {%- endif -%}
+        </p>
+      {%- endif -%}
+
+      {%- if section.settings.button_text != blank -%}
+        <a class="hero__button" href="{{ section.settings.button_link | default: '#' }}">
+          {{ section.settings.button_text }}
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+      {%- endif -%}
+
+      {%- if section.settings.guarantee_text != blank or section.settings.rating_text != blank -%}
+        <div class="hero__trust">
+          {%- if section.settings.guarantee_text != blank -%}
+            <span class="hero__guarantee">
+              <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#000" stroke-width="2.4"/></svg>
+              {{ section.settings.guarantee_text }}
+            </span>
+          {%- endif -%}
+          {%- if section.settings.rating_text != blank -%}
+            <span class="hero__rating"><span class="hero__stars" aria-hidden="true">★★★★★</span> {{ section.settings.rating_text }}</span>
+          {%- endif -%}
+        </div>
+      {%- endif -%}
+    </div>
+
+  </div>
+</section>
+
+{% stylesheet %}
+  /* Izlazak iz grida teme do ivica ekrana */
+  .shopify-section.section-hero > .hero {
+    grid-column: 1 / -1;
+  }
+
+  /* ---------- DESKTOP ---------- */
+  .hero {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-height: var(--hero-min-h, 700px);
+    overflow: hidden;
+    color: var(--hero-text, #fff);
+    background: var(--hero-bg, #b8440f);
+  }
+  .hero__bg,
+  .hero__bg img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .hero__bg img {
+    object-position: right center;
+  }
+  .hero__content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 680px;
+    padding: 48px 24px 48px 96px;
+    box-sizing: border-box;
+  }
+
+  .hero__badge-img { display: block; max-width: 220px; height: auto; }
+  .hero__badge-text { margin: 6px 0 0; font-size: 14px; }
+
+  .hero__heading {
+    margin: 28px 0 0;
+    font-size: 56px;
+    line-height: 1.02;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+  .hero__subheading {
+    margin: 28px 0 0;
+    font-size: 30px;
+    line-height: 1.45;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .hero__subheading p { margin: 0; }
+  .hero__price {
+    margin: 72px 0 0;
+    font-size: 30px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .hero__price-old { margin-left: 8px; }
+  .hero__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 56px;
+    padding: 22px 56px;
+    background: var(--hero-btn-bg, #6a11ff);
+    color: var(--hero-btn-text, #fff);
+    border: 3px solid #000;
+    border-radius: 14px;
+    font-size: 24px;
+    font-weight: 700;
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .hero__trust {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    margin-top: 22px;
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .hero__guarantee,
+  .hero__rating { display: inline-flex; align-items: center; gap: 8px; }
+  .hero__stars { color: #ffb400; letter-spacing: 2px; }
+
+  /* ---------- MOBILE ---------- */
+  /* Slika je pozadina cele sekcije. Gornji blok (badge + naslov) ide na vrh,
+     donji (podnaslov, cena, dugme, garancija) na dno, proizvodi ostaju u sredini. */
+     @media (max-width: 749px) {
+    .hero {
+      align-items: stretch;
+      min-height: var(--hero-min-h-m, 640px);
+    }
+    .hero__bg img {
+      object-position: center bottom;
+    }
+    /* Bez mobilne slike: prikaži celu desktop sliku u sredini */
+    .hero--no-mobile .hero__bg img {
+      inset: auto 0;
+      top: 50%;
+      height: auto;
+      transform: translateY(-50%);
+      object-fit: contain;
+    }
+    .hero__content {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      max-width: 100%;
+      padding: 28px 20px;
+    }
+    .hero__badge-img { max-width: 140px; }
+    .hero__badge-text { font-size: 12px; }
+    .hero__heading { margin-top: 14px; font-size: 32px; line-height: 1.05; letter-spacing: -0.03em; }
+    .hero__subheading { margin-top: 0; font-size: 18px; line-height: 1.35; font-weight: 500; }
+    .hero__price { margin-top: 12px; font-size: 22px; }
+    .hero__button {
+      display: flex;
+      justify-content: center;
+      width: 100%;
+      margin-top: 18px;
+      padding: 16px 24px;
+      font-size: 18px;
+      box-sizing: border-box;
+    }
+    .hero__trust { gap: 6px 16px; margin-top: 14px; font-size: 13px; }
+  }
+    
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Hero",
+  "tag": "section",
+  "class": "section-hero",
+  "settings": [
+    { "type": "header", "content": "Pozadina" },
+    { "type": "image_picker", "id": "image_desktop", "label": "Desktop slika" },
+    { "type": "image_picker", "id": "image_mobile", "label": "Mobilna slika" },
+    { "type": "color", "id": "bg_color", "label": "Boja iza slike", "default": "#b8440f" },
+    { "type": "range", "id": "min_height", "label": "Visina (desktop)", "min": 400, "max": 1000, "step": 20, "unit": "px", "default": 700 },
+    { "type": "range", "id": "min_height_mobile", "label": "Visina (mobilni)", "min": 500, "max": 1100, "step": 20, "unit": "px", "default": 760 },
+
+    { "type": "header", "content": "Badge" },
+    { "type": "image_picker", "id": "badge_image", "label": "Badge slika" },
+    { "type": "text", "id": "badge_text", "label": "Badge tekst", "default": "Verified by frontrowMD" },
+
+    { "type": "header", "content": "Tekst" },
+    { "type": "textarea", "id": "heading", "label": "Naslov", "default": "No Jitters. No Crash.\nPeak Fall Flavor." },
+    { "type": "richtext", "id": "subheading", "label": "Podnaslov", "default": "<p>Get a FREE Starter Kit, Pumpkin Spice Creamer+ and Tumbler with Coffee+.</p>" },
+
+    { "type": "header", "content": "Cena" },
+    { "type": "text", "id": "price_label_new", "label": "Labela nove cene", "default": "Now" },
+    { "type": "text", "id": "price_new", "label": "Nova cena", "default": "$49" },
+    { "type": "text", "id": "price_label_old", "label": "Labela stare cene", "default": "Was" },
+    { "type": "text", "id": "price_old", "label": "Stara cena", "default": "$140" },
+
+    { "type": "header", "content": "Dugme" },
+    { "type": "text", "id": "button_text", "label": "Tekst dugmeta", "default": "Try Dose Today" },
+    { "type": "url", "id": "button_link", "label": "Link dugmeta" },
+
+    { "type": "header", "content": "Trust red" },
+    { "type": "text", "id": "guarantee_text", "label": "Garancija", "default": "45 Day Money Back Guarantee" },
+    { "type": "text", "id": "rating_text", "label": "Ocena i broj recenzija", "default": "4.8 (+165k)" },
+
+    { "type": "header", "content": "Boje" },
+    { "type": "color", "id": "text_color", "label": "Boja teksta", "default": "#ffffff" },
+    { "type": "color", "id": "button_bg", "label": "Pozadina dugmeta", "default": "#6a11ff" },
+    { "type": "color", "id": "button_text_color", "label": "Boja teksta dugmeta", "default": "#ffffff" }
+  ],
+  "presets": [
+    { "name": "Hero" }
+  ]
+}
+{% endschema %}
