@@ -22,7 +22,7 @@
             assign rating = product.metafields.reviews.rating.value
             assign discount = 0
             if product.compare_at_price > product.price
-              assign discount = product.compare_at_price | minus: product.price | times: 100 | divided_by: product.compare_at_price
+              assign discount = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round
             endif
           -%}
           <li class="product-row__card">
@@ -153,6 +153,8 @@
     font-size: 20px;
     font-weight: 700;
     line-height: 1.35;
+    color: #000;
+    text-transform: none;
   }
 
   /* Ocena: pune zvezdice (--full) + deo sledeće (--frac, npr. 0.5) */

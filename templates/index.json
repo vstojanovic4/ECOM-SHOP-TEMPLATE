@@ -139,7 +139,7 @@
       "type": "new-arrivals",
       "settings": {
         "heading": "New Arrivals",
-        "collection": "",
+        "collection": "new-project",
         "products_count": 4,
         "button_label": "View All",
         "button_link": "",
