@@ -1,0 +1,267 @@
+{%- liquid
+  assign s = section.settings
+-%}
+
+{%- capture star -%}
+  <svg viewBox="0 0 20 19" aria-hidden="true"><path d="M10 0l2.94 6.06 6.56.92-4.79 4.62 1.17 6.56L10 15.04 4.12 18.16l1.17-6.56L.5 6.98l6.56-.92L10 0z" fill="currentColor"/></svg>
+{%- endcapture -%}
+
+<section class="reviews full-width" data-reviews>
+  <div class="reviews__top">
+    {%- if s.heading != blank -%}
+      <h2 class="reviews__heading">{{ s.heading | escape }}</h2>
+    {%- endif -%}
+    <div class="reviews__arrows">
+      <button type="button" class="reviews__arrow" data-reviews-prev aria-label="Prethodna recenzija">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4m0 0l7-7m-7 7l7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="reviews__arrow" data-reviews-next aria-label="Sledeća recenzija">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m0 0l-7-7m7 7l-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="reviews__viewport">
+    <ul class="reviews__track" role="list" data-reviews-track>
+      {%- for block in section.blocks -%}
+        {%- liquid
+          assign b = block.settings
+          assign rating_full = b.rating | floor
+          assign rating_frac = b.rating | minus: rating_full
+        -%}
+        <li class="reviews__card" {{ block.shopify_attributes }}>
+          <span class="reviews__stars" style="--full: {{ rating_full }}; --frac: {{ rating_frac }};" aria-label="{{ b.rating }} / 5">
+            <span class="reviews__stars-fill">{% for i in (1..5) %}{{ star }}{% endfor %}</span>
+          </span>
+          <p class="reviews__name">
+            {{- b.name | escape -}}
+            {%- if b.verified -%}
+              <svg class="reviews__check" viewBox="0 0 24 24" aria-label="Potvrđen kupac"><circle cx="12" cy="12" r="10" fill="#01ab31"/><path d="M7.5 12.2l3 3 6-6" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {%- endif -%}
+          </p>
+          <div class="reviews__text">{{ b.text }}</div>
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</section>
+
+{% stylesheet %}
+  .reviews {
+    --gutter: max(16px, (100% - 1240px) / 2);
+    padding: 0 0 80px;
+    overflow: hidden;
+  }
+  .reviews__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    width: min(1240px, 100% - 32px);
+    margin: 0 auto 40px;
+  }
+  .reviews__heading {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-stretch: 106%;
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    color: #000;
+    text-transform: uppercase;
+  }
+  .reviews__arrows {
+    display: flex;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .reviews__arrow {
+    display: flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #000;
+    cursor: pointer;
+  }
+  .reviews__arrow svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* ---------- Red kartica ---------- */
+  .reviews__viewport {
+    position: relative;
+  }
+  /* Zamućene kartice levo i desno od sadržaja */
+  .reviews__viewport::before,
+  .reviews__viewport::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 1;
+    width: calc(var(--gutter) - 20px);
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+    background: rgba(255, 255, 255, 0.2);
+    pointer-events: none;
+  }
+  .reviews__viewport::before {
+    left: 0;
+  }
+  .reviews__viewport::after {
+    right: 0;
+  }
+  .reviews__track {
+    display: flex;
+    gap: 20px;
+    margin: 0;
+    padding: 0 var(--gutter);
+    list-style: none;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: var(--gutter);
+    scroll-behavior: smooth;
+    scrollbar-width: none;
+  }
+  .reviews__track::-webkit-scrollbar {
+    display: none;
+  }
+
+  .reviews__card {
+    flex: 0 0 400px;
+    min-height: 240px;
+    padding: 28px 32px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    scroll-snap-align: start;
+  }
+  .reviews__stars {
+    --star: 22px;
+    --star-gap: 7px;
+    display: block;
+    width: calc(5 * var(--star) + 4 * var(--star-gap));
+    margin-bottom: 15px;
+  }
+  .reviews__stars-fill {
+    display: flex;
+    gap: var(--star-gap);
+    width: calc(var(--full) * (var(--star) + var(--star-gap)) + var(--frac) * var(--star));
+    overflow: hidden;
+    color: #ffc633;
+  }
+  .reviews__stars-fill svg {
+    flex: 0 0 var(--star);
+    width: var(--star);
+    height: var(--star);
+  }
+  .reviews__name {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0 0 12px;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 22px;
+    color: #000;
+  }
+  .reviews__check {
+    width: 24px;
+    height: 24px;
+  }
+  .reviews__text {
+    font-size: 16px;
+    line-height: 22px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .reviews__text p {
+    margin: 0;
+  }
+
+  /* ---------- MOBILNI ---------- */
+  @media (max-width: 989px) {
+    .reviews {
+      padding-bottom: 50px;
+    }
+    .reviews__top {
+      align-items: flex-end;
+      margin-bottom: 24px;
+    }
+    .reviews__heading {
+      font-size: 32px;
+    }
+    .reviews__viewport::before,
+    .reviews__viewport::after {
+      display: none;
+    }
+    .reviews__card {
+      flex-basis: min(358px, 100vw - 32px);
+      min-height: 186px;
+      padding: 24px;
+    }
+    .reviews__stars {
+      --star: 18px;
+      --star-gap: 6px;
+      margin-bottom: 12px;
+    }
+    .reviews__name {
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+    .reviews__check {
+      width: 20px;
+      height: 20px;
+    }
+    .reviews__text {
+      font-size: 14px;
+      line-height: 20px;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  // Strelice pomeraju red za jednu karticu
+  document.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-reviews-prev], [data-reviews-next]');
+    if (!button) return;
+
+    const track = button.closest('[data-reviews]').querySelector('[data-reviews-track]');
+    const card = track.firstElementChild;
+    if (!card) return;
+
+    const step = card.offsetWidth + parseFloat(getComputedStyle(track).columnGap || 0);
+    const direction = button.hasAttribute('data-reviews-next') ? 1 : -1;
+    track.scrollBy({ left: step * direction });
+  });
+{% endjavascript %}
+
+{% schema %}
+{
+  "name": "Recenzije",
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Naslov", "default": "Our happy customers" }
+  ],
+  "blocks": [
+    {
+      "type": "review",
+      "name": "Recenzija",
+      "settings": [
+        { "type": "text", "id": "name", "label": "Ime", "default": "Sarah M." },
+        { "type": "range", "id": "rating", "label": "Ocena", "min": 1, "max": 5, "step": 0.5, "default": 5 },
+        { "type": "checkbox", "id": "verified", "label": "Potvrđen kupac (zelena kvačica)", "default": true },
+        { "type": "richtext", "id": "text", "label": "Tekst", "default": "<p>\"I'm blown away by the quality and style of the clothes I received from Shop.co.\"</p>" }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Recenzije",
+      "blocks": [
+        { "type": "review" },
+        { "type": "review" },
+        { "type": "review" }
+      ]
+    }
+  ]
+}
+{% endschema %}
