@@ -150,7 +150,7 @@
       "type": "new-arrivals",
       "settings": {
         "heading": "Top Selling",
-        "collection": "",
+        "collection": "top-selling",
         "products_count": 4,
         "button_label": "View All",
         "button_link": "",
