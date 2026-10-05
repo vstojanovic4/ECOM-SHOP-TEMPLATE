@@ -156,12 +156,32 @@
         "button_link": "",
         "show_divider": false
       }
+    },
+    "dress-style": {
+      "type": "dress-style",
+      "blocks": {
+        "casual": { "type": "style", "settings": { "label": "Casual", "link": "" } },
+        "formal": { "type": "style", "settings": { "label": "Formal", "link": "" } },
+        "party": { "type": "style", "settings": { "label": "Party", "link": "" } },
+        "gym": { "type": "style", "settings": { "label": "Gym", "link": "" } }
+      },
+      "block_order": [
+        "casual",
+        "formal",
+        "party",
+        "gym"
+      ],
+      "settings": {
+        "heading": "Browse by dress style",
+        "bg_color": "#f0f0f0"
+      }
     }
   },
   "order": [
     "hero",
     "brands",
     "new-arrivals",
-    "top-selling"
+    "top-selling",
+    "dress-style"
   ]
 }
