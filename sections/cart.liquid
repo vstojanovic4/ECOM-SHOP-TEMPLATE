@@ -1,37 +1,581 @@
 {% comment %}
-  This section is used in the cart template to render /cart page with an
-  overview of the items in customer's cart.
-
-  https://shopify.dev/docs/storefronts/themes/architecture/templates/cart
+  Korpa (po Figma dizajnu): lista proizvoda levo, Order Summary desno.
+  Količina i brisanje rade preko /cart/change (link), pa ne treba JavaScript.
+  Promo kod ide na /discount/KOD?redirect=/cart (Shopify ga primeni na korpu).
 {% endcomment %}
 
-<h1>{{ 'cart.title' | t }}</h1>
+{%- liquid
+  assign s = section.settings
+-%}
 
-<form action="{{ routes.cart_url }}" method="post">
-  <table>
-    {% for item in cart.items %}
-      <tr>
-        <td>
-          {% render 'image', image: item.image, url: item.url %}
-        </td>
-        <td>
-          <p>{{ item.product.title }}</p>
-          {{ 'cart.remove' | t | link_to: item.url_to_remove }}
-        </td>
-        <td>
-          <input type="text" name="updates[]" value="{{ item.quantity }}">
-          <input type="submit" value="{{ 'cart.update' | t }}">
-        </td>
-      </tr>
-    {% endfor %}
-  </table>
+{%- capture chevron_right -%}
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endcapture -%}
 
-  <input type="submit" name="checkout" value="{{ 'cart.checkout' | t }}">
-</form>
+<div class="cart-page full-width">
+  <div class="cart-page__inner">
+
+    <nav class="cart-page__breadcrumbs" aria-label="Putanja">
+      <a href="{{ routes.root_url }}">Home</a>{{ chevron_right }}
+      <span aria-current="page">Cart</span>
+    </nav>
+
+    <h1 class="cart-page__title">{{ s.heading | escape }}</h1>
+
+    {%- if cart.item_count > 0 -%}
+      <div class="cart-page__layout">
+
+        {%- comment -%} ---------- Proizvodi ---------- {%- endcomment -%}
+        <ul class="cart-page__items" role="list">
+          {%- for item in cart.items -%}
+            {%- liquid
+              assign line = forloop.index
+              assign qty_minus = item.quantity | minus: 1
+              assign qty_plus = item.quantity | plus: 1
+            -%}
+            <li class="cart-item">
+              <a class="cart-item__media" href="{{ item.url }}">
+                {%- if item.image -%}
+                  {{ item.image | image_url: width: 260 | image_tag: widths: '130, 260', sizes: '124px', loading: 'lazy', class: 'cart-item__img', alt: item.product.title }}
+                {%- else -%}
+                  {{ 'product-apparel-1' | placeholder_svg_tag: 'cart-item__img' }}
+                {%- endif -%}
+              </a>
+
+              <div class="cart-item__info">
+                <div class="cart-item__top">
+                  <a class="cart-item__title" href="{{ item.url }}">{{ item.product.title | escape }}</a>
+                  <a class="cart-item__remove" href="{{ routes.cart_change_url }}?line={{ line }}&quantity=0" aria-label="Ukloni {{ item.product.title | escape }}">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm-3 6h12l-1 12H7L6 9zm4 2v8h1.5v-8H10zm3.5 0v8H15v-8h-1.5z" fill="currentColor"/></svg>
+                  </a>
+                </div>
+
+                {%- unless item.product.has_only_default_variant -%}
+                  <dl class="cart-item__options">
+                    {%- for option in item.options_with_values -%}
+                      <div><dt>{{ option.name | escape }}:</dt> <dd>{{ option.value | escape }}</dd></div>
+                    {%- endfor -%}
+                  </dl>
+                {%- endunless -%}
+
+                <div class="cart-item__bottom">
+                  <div class="cart-item__price">
+                    {%- if item.original_line_price > item.final_line_price -%}
+                      <s>{{ item.original_line_price | money_without_trailing_zeros }}</s>
+                    {%- endif -%}
+                    <span>{{ item.final_line_price | money_without_trailing_zeros }}</span>
+                  </div>
+
+                  <div class="cart-item__qty">
+                    <a class="cart-item__qty-btn" href="{{ routes.cart_change_url }}?line={{ line }}&quantity={{ qty_minus }}" aria-label="Smanji količinu">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </a>
+                    <span class="cart-item__qty-value" aria-label="Količina">{{ item.quantity }}</span>
+                    <a class="cart-item__qty-btn" href="{{ routes.cart_change_url }}?line={{ line }}&quantity={{ qty_plus }}" aria-label="Povećaj količinu">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </li>
+          {%- endfor -%}
+        </ul>
+
+        {%- comment -%} ---------- Order Summary ---------- {%- endcomment -%}
+        <div class="cart-summary">
+          <h2 class="cart-summary__title">{{ s.summary_heading | escape }}</h2>
+
+          <dl class="cart-summary__rows">
+            <div class="cart-summary__row">
+              <dt>Subtotal</dt>
+              <dd>{{ cart.original_total_price | money_without_trailing_zeros }}</dd>
+            </div>
+
+            {%- comment -%} Popust = cena pre svih popusta minus konačna cena {%- endcomment -%}
+            {%- assign cart_discount = cart.original_total_price | minus: cart.total_price -%}
+            {%- if cart_discount > 0 -%}
+              {%- assign discount_pct = cart_discount | times: 100.0 | divided_by: cart.original_total_price | round -%}
+              <div class="cart-summary__row">
+                <dt>
+                  Discount (-{{ discount_pct }}%)
+                  {%- for discount in cart.cart_level_discount_applications -%}
+                    <span class="cart-summary__code">{{ discount.title | escape }}</span>
+                  {%- endfor -%}
+                </dt>
+                <dd class="cart-summary__discount">-{{ cart_discount | money_without_trailing_zeros }}</dd>
+              </div>
+            {%- endif -%}
+
+            <div class="cart-summary__row">
+              <dt>Delivery Fee</dt>
+              <dd class="cart-summary__muted">{{ s.delivery_text | escape }}</dd>
+            </div>
+
+            <div class="cart-summary__row cart-summary__row--total">
+              <dt>Total</dt>
+              <dd>{{ cart.total_price | money_without_trailing_zeros }}</dd>
+            </div>
+          </dl>
+
+          {%- if s.show_promo -%}
+            <form class="cart-summary__promo" data-promo-form>
+              <label class="cart-summary__promo-field">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7.5" cy="7.5" r="1.5" fill="currentColor"/></svg>
+                <span class="visually-hidden">Promo code</span>
+                <input type="text" name="code" placeholder="{{ s.promo_placeholder | escape }}" autocomplete="off" required>
+              </label>
+              <button type="submit" class="cart-summary__apply">{{ s.promo_button | escape }}</button>
+            </form>
+          {%- endif -%}
+
+          <form action="{{ routes.cart_url }}" method="post">
+            <button type="submit" name="checkout" class="cart-summary__checkout">
+              {{ s.checkout_label | escape }}
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h16m0 0l-7-7m7 7l-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          </form>
+        </div>
+      </div>
+
+    {%- else -%}
+      <div class="cart-page__empty">
+        <p>{{ s.empty_text | escape }}</p>
+        <a class="cart-page__continue" href="{{ routes.all_products_collection_url }}">{{ s.continue_label | escape }}</a>
+      </div>
+    {%- endif -%}
+  </div>
+</div>
+
+{% stylesheet %}
+  .cart-page__inner {
+    width: min(1240px, 100% - 32px);
+    margin: 0 auto;
+    padding: 24px 0 80px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .cart-page .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  .cart-page__breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 24px;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .cart-page__breadcrumbs a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .cart-page__breadcrumbs svg {
+    width: 16px;
+    height: 16px;
+    margin: 0 4px;
+  }
+  .cart-page__breadcrumbs [aria-current] {
+    color: #000;
+  }
+  .cart-page__title {
+    margin: 0 0 24px;
+    font-family: var(--font-heading);
+    font-stretch: 106%;
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1;
+    color: #000;
+    text-transform: uppercase;
+  }
+
+  .cart-page__layout {
+    display: grid;
+    grid-template-columns: 715fr 505fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* ---------- Proizvodi ---------- */
+  .cart-page__items {
+    margin: 0;
+    padding: 20px 24px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    list-style: none;
+  }
+  .cart-item {
+    display: flex;
+    gap: 16px;
+  }
+  .cart-item + .cart-item {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .cart-item__media {
+    flex-shrink: 0;
+    width: 124px;
+    height: 124px;
+    overflow: hidden;
+    border-radius: 9px;
+    background: #f0eeed;
+  }
+  .cart-item__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .cart-item__info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .cart-item__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .cart-item__title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #000;
+    text-decoration: none;
+  }
+  .cart-item__remove {
+    flex-shrink: 0;
+    display: flex;
+    color: #f33;
+  }
+  .cart-item__remove svg {
+    width: 24px;
+    height: 24px;
+  }
+  .cart-item__options {
+    margin: 2px 0 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #000;
+  }
+  .cart-item__options div {
+    display: flex;
+    gap: 4px;
+  }
+  .cart-item__options dd {
+    margin: 0;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .cart-item__bottom {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 8px;
+  }
+  .cart-item__price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #000;
+  }
+  .cart-item__price s {
+    font-size: 18px;
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .cart-item__qty {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 126px;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: 62px;
+    background: #f0f0f0;
+  }
+  .cart-item__qty-btn {
+    display: flex;
+    color: #000;
+  }
+  .cart-item__qty-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .cart-item__qty-value {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  /* ---------- Order Summary ---------- */
+  .cart-summary {
+    padding: 20px 24px 33px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+  }
+  .cart-summary__title {
+    margin: 0 0 24px;
+    font-size: 24px;
+    font-weight: 700;
+    color: #000;
+  }
+  .cart-summary__rows {
+    margin: 0;
+  }
+  .cart-summary__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    font-size: 20px;
+  }
+  .cart-summary__row + .cart-summary__row {
+    margin-top: 20px;
+  }
+  .cart-summary__row dt {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .cart-summary__row dd {
+    margin: 0;
+    font-weight: 700;
+    color: #000;
+    text-align: right;
+  }
+  .cart-summary__code {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 10px;
+    border-radius: 62px;
+    background: #f0f0f0;
+    font-size: 12px;
+    color: #000;
+  }
+  .cart-summary__discount {
+    color: #f33 !important;
+  }
+  .cart-summary__muted {
+    font-size: 16px;
+    font-weight: 400 !important;
+    color: rgba(0, 0, 0, 0.6) !important;
+  }
+  .cart-summary__row--total {
+    padding-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .cart-summary__row--total dt {
+    color: #000;
+  }
+  .cart-summary__row--total dd {
+    font-size: 24px;
+  }
+
+  .cart-summary__promo {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+  }
+  .cart-summary__promo-field {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    height: 48px;
+    padding: 0 16px;
+    border-radius: 62px;
+    background: #f0f0f0;
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .cart-summary__promo-field svg {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+  }
+  .cart-summary__promo-field input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    outline: 0;
+    background: none;
+    color: #000;
+    font-size: 16px;
+  }
+  .cart-summary__apply {
+    width: 119px;
+    height: 48px;
+    border: 0;
+    border-radius: 62px;
+    background: #000;
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .cart-summary__checkout {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    width: 100%;
+    height: 60px;
+    margin-top: 24px;
+    border: 0;
+    border-radius: 62px;
+    background: #000;
+    color: #fff;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .cart-summary__checkout svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  /* ---------- Prazna korpa ---------- */
+  .cart-page__empty {
+    padding: 60px 0;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .cart-page__continue {
+    display: inline-flex;
+    align-items: center;
+    height: 52px;
+    margin-top: 20px;
+    padding: 0 54px;
+    border-radius: 62px;
+    background: #000;
+    color: #fff;
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  /* ---------- MOBILNI ---------- */
+  @media (max-width: 989px) {
+    .cart-page__inner {
+      padding-bottom: 50px;
+    }
+    .cart-page__breadcrumbs {
+      margin-bottom: 10px;
+      font-size: 14px;
+    }
+    .cart-page__title {
+      margin-bottom: 20px;
+      font-size: 32px;
+    }
+    .cart-page__layout {
+      grid-template-columns: 1fr;
+    }
+    .cart-page__items {
+      padding: 14px;
+    }
+    .cart-item {
+      gap: 14px;
+    }
+    .cart-item + .cart-item {
+      margin-top: 16px;
+      padding-top: 16px;
+    }
+    .cart-item__media {
+      width: 99px;
+      height: 99px;
+    }
+    .cart-item__title {
+      font-size: 16px;
+    }
+    .cart-item__remove svg {
+      width: 16px;
+      height: 16px;
+    }
+    .cart-item__options {
+      font-size: 12px;
+    }
+    .cart-item__price {
+      font-size: 20px;
+    }
+    .cart-item__qty {
+      width: 105px;
+      height: 31px;
+      padding: 0 14px;
+    }
+    .cart-item__qty-btn svg {
+      width: 16px;
+      height: 16px;
+    }
+    .cart-item__qty-value {
+      font-size: 12px;
+    }
+
+    .cart-summary {
+      padding: 20px;
+    }
+    .cart-summary__title {
+      margin-bottom: 20px;
+      font-size: 20px;
+    }
+    .cart-summary__row {
+      font-size: 16px;
+    }
+    .cart-summary__row--total dd {
+      font-size: 20px;
+    }
+    .cart-summary__muted {
+      font-size: 14px;
+    }
+    .cart-summary__promo-field {
+      height: 48px;
+    }
+    .cart-summary__promo-field input,
+    .cart-summary__apply {
+      font-size: 14px;
+    }
+    .cart-summary__apply {
+      width: 88px;
+    }
+    .cart-summary__checkout {
+      height: 54px;
+      font-size: 14px;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  // Promo kod: Shopify ga primenjuje preko /discount/KOD, pa vraća na korpu
+  document.querySelectorAll('[data-promo-form]').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const code = form.querySelector('input[name="code"]').value.trim();
+      if (!code) return;
+      window.location.href = `/discount/${encodeURIComponent(code)}?redirect=${encodeURIComponent(window.location.pathname)}`;
+    });
+  });
+{% endjavascript %}
 
 {% schema %}
 {
   "name": "t:general.cart",
-  "settings": []
+  "settings": [
+    { "type": "text", "id": "heading", "label": "Naslov", "default": "Your cart" },
+    { "type": "text", "id": "summary_heading", "label": "Naslov pregleda", "default": "Order Summary" },
+    { "type": "text", "id": "delivery_text", "label": "Tekst za dostavu", "default": "Calculated at checkout", "info": "Cena dostave se računa na checkoutu, kad kupac unese adresu." },
+    { "type": "checkbox", "id": "show_promo", "label": "Prikaži polje za promo kod", "default": true },
+    { "type": "text", "id": "promo_placeholder", "label": "Tekst u polju za kod", "default": "Add promo code" },
+    { "type": "text", "id": "promo_button", "label": "Dugme za kod", "default": "Apply" },
+    { "type": "text", "id": "checkout_label", "label": "Dugme za plaćanje", "default": "Go to Checkout" },
+    { "type": "text", "id": "empty_text", "label": "Tekst kad je korpa prazna", "default": "Your cart is empty." },
+    { "type": "text", "id": "continue_label", "label": "Dugme kad je korpa prazna", "default": "Continue shopping" }
+  ]
 }
 {% endschema %}
