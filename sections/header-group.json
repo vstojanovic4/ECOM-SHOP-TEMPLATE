@@ -19,7 +19,7 @@
       "type": "header",
       "blocks": {
         "shop": { "type": "menu_item", "settings": { "label": "Shop", "link": "/collections/all", "submenu": "main-menu" } },
-        "on-sale": { "type": "menu_item", "settings": { "label": "On Sale", "link": "/collections/all" } },
+        "on-sale": { "type": "menu_item", "settings": { "label": "On Sale", "link": "/collections/on-sale" } },
         "new-arrivals": { "type": "menu_item", "settings": { "label": "New Arrivals", "link": "/collections/all" } },
         "brands": { "type": "menu_item", "settings": { "label": "Brands", "link": "/collections/all" } }
       },

@@ -43,32 +43,21 @@
             </button>
           </div>
 
-          {%- comment -%} Kategorije: meni iz editora, ili tipovi proizvoda iz kolekcije {%- endcomment -%}
+          {%- comment -%}
+            Filteri se slažu kao u dizajnu: kategorije → Price → Colors → Size → ostalo → Dress Style.
+            Tag filter (Search & Discovery) se deli na dva dela:
+            tagovi iz podešavanja "Stilovi" idu u Dress Style, svi ostali su kategorije na vrhu.
+          {%- endcomment -%}
           {%- liquid
-            assign type_count = 0
-            for type in collection.all_types
-              if type != blank
-                assign type_count = type_count | plus: 1
-              endif
-            endfor
+            assign style_tags = s.style_tags | downcase | split: ','
+            assign html_categories = ''
+            assign html_styles = ''
+            assign html_price = ''
+            assign html_color = ''
+            assign html_size = ''
+            assign html_other = ''
           -%}
-          {%- if s.category_menu != blank or type_count > 0 -%}
-            <ul class="plp__links" role="list">
-              {%- if s.category_menu != blank -%}
-                {%- for link in s.category_menu.links -%}
-                  <li><a href="{{ link.url }}">{{ link.title | escape }}{{ chevron_right }}</a></li>
-                {%- endfor -%}
-              {%- else -%}
-                {%- for type in collection.all_types -%}
-                  {%- if type != blank -%}
-                    <li><a href="{{ type | url_for_type }}">{{ type | escape }}{{ chevron_right }}</a></li>
-                  {%- endif -%}
-                {%- endfor -%}
-              {%- endif -%}
-            </ul>
-          {%- endif -%}
 
-          {%- comment -%} Shopify filteri (cena, boja, veličina...) {%- endcomment -%}
           {%- for filter in collection.filters -%}
             {%- liquid
               assign filter_label = filter.label | downcase
@@ -79,86 +68,153 @@
               elsif size_words contains filter_label
                 assign is_size = true
               endif
+              if filter.param_name contains 'availability' and s.show_availability == false
+                continue
+              endif
             -%}
-            <details class="plp__group" open>
-              <summary class="plp__group-title">{{ filter.label | escape }}{{ chevron_up }}</summary>
 
-              {%- case filter.type -%}
-                {%- when 'price_range' -%}
-                  {%- liquid
-                    assign range_max = filter.range_max | divided_by: 100.0 | ceil
-                    assign current_min = filter.min_value.value | default: 0 | divided_by: 100.0 | floor
-                    assign current_max = filter.max_value.value | default: filter.range_max | divided_by: 100.0 | ceil
-                    if range_max < 1
-                      assign range_max = 1
+            {%- if filter.param_name == 'filter.p.tag' -%}
+              {%- for value in filter.values -%}
+                {%- liquid
+                  assign tag_key = value.label | downcase | strip
+                  assign is_style = false
+                  for style in style_tags
+                    assign style_clean = style | strip
+                    if style_clean == tag_key
+                      assign is_style = true
                     endif
-                  -%}
-                  <div class="plp__price" data-price-range style="--min: {{ current_min }}; --max: {{ current_max }}; --range: {{ range_max }};">
-                    <div class="plp__price-track"></div>
-                    <input type="range" min="0" max="{{ range_max }}" step="1" value="{{ current_min }}" name="{{ filter.min_value.param_name }}" aria-label="Najniža cena" data-price-min>
-                    <input type="range" min="0" max="{{ range_max }}" step="1" value="{{ current_max }}" name="{{ filter.max_value.param_name }}" aria-label="Najviša cena" data-price-max>
-                    <div class="plp__price-labels">
-                      <span data-price-min-label>{{ cart.currency.symbol }}{{ current_min }}</span>
-                      <span data-price-max-label>{{ cart.currency.symbol }}{{ current_max }}</span>
-                    </div>
-                  </div>
-
-                {%- when 'boolean' -%}
-                  <div class="plp__checks">
-                    {%- for value in filter.values -%}
-                      <label class="plp__check">
-                        <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
-                        {{ value.label | escape }}
-                      </label>
-                    {%- endfor -%}
-                  </div>
-
+                  endfor
+                -%}
+                {%- capture row -%}
+                  <li>
+                    <label class="plp__row">
+                      <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                      <span>{{ value.label | escape }}</span>{{ chevron_right }}
+                    </label>
+                  </li>
+                {%- endcapture -%}
+                {%- if is_style -%}
+                  {%- assign html_styles = html_styles | append: row -%}
                 {%- else -%}
-                  {%- if is_color -%}
-                    <div class="plp__swatches">
-                      {%- for value in filter.values -%}
-                        {%- assign swatch = value.swatch.color | default: value.label | downcase | remove: ' ' -%}
-                        <label class="plp__swatch" style="--swatch: {{ swatch }};" title="{{ value.label | escape }} ({{ value.count }})">
-                          <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
-                          <span class="visually-hidden">{{ value.label | escape }}</span>
-                          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        </label>
-                      {%- endfor -%}
+                  {%- assign html_categories = html_categories | append: row -%}
+                {%- endif -%}
+              {%- endfor -%}
+              {%- continue -%}
+            {%- endif -%}
+
+            {%- capture group -%}
+              <details class="plp__group" open>
+                <summary class="plp__group-title">
+                  {%- if is_color -%}{{ s.colors_label | escape }}{%- elsif is_size -%}{{ s.size_label | escape }}{%- else -%}{{ filter.label | escape }}{%- endif -%}
+                  {{ chevron_up }}
+                </summary>
+
+                {%- case filter.type -%}
+                  {%- when 'price_range' -%}
+                    {%- liquid
+                      assign range_max = filter.range_max | divided_by: 100.0 | ceil
+                      assign current_min = filter.min_value.value | default: 0 | divided_by: 100.0 | floor
+                      assign current_max = filter.max_value.value | default: filter.range_max | divided_by: 100.0 | ceil
+                      if range_max < 1
+                        assign range_max = 1
+                      endif
+                    -%}
+                    <div class="plp__price" data-price-range style="--min: {{ current_min }}; --max: {{ current_max }}; --range: {{ range_max }};">
+                      <div class="plp__price-track"></div>
+                      <input type="range" min="0" max="{{ range_max }}" step="1" value="{{ current_min }}" name="{{ filter.min_value.param_name }}" aria-label="Najniža cena" data-price-min>
+                      <input type="range" min="0" max="{{ range_max }}" step="1" value="{{ current_max }}" name="{{ filter.max_value.param_name }}" aria-label="Najviša cena" data-price-max>
+                      <div class="plp__price-labels">
+                        <span data-price-min-label>{{ cart.currency.symbol }}{{ current_min }}</span>
+                        <span data-price-max-label>{{ cart.currency.symbol }}{{ current_max }}</span>
+                      </div>
                     </div>
-                  {%- elsif is_size -%}
-                    <div class="plp__pills">
-                      {%- for value in filter.values -%}
-                        <label class="plp__pill">
-                          <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
-                          <span>{{ value.label | escape }}</span>
-                        </label>
-                      {%- endfor -%}
-                    </div>
-                  {%- else -%}
+
+                  {%- when 'boolean' -%}
                     <div class="plp__checks">
                       {%- for value in filter.values -%}
                         <label class="plp__check">
                           <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
-                          {{ value.label | escape }} <span>({{ value.count }})</span>
+                          {{ value.label | escape }}
                         </label>
                       {%- endfor -%}
                     </div>
-                  {%- endif -%}
-              {%- endcase -%}
-            </details>
+
+                  {%- else -%}
+                    {%- if is_color -%}
+                      <div class="plp__swatches">
+                        {%- for value in filter.values -%}
+                          {%- liquid
+                            assign swatch = value.swatch.color | default: value.label | downcase | remove: ' '
+                            if swatch == 'multicolor' or swatch == 'multi'
+                              assign swatch = 'conic-gradient(#f33, #fc0, #3c3, #39f, #93f, #f33)'
+                            endif
+                          -%}
+                          <label class="plp__swatch" style="--swatch: {{ swatch }};" title="{{ value.label | escape }} ({{ value.count }})">
+                            <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                            <span class="visually-hidden">{{ value.label | escape }}</span>
+                            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                          </label>
+                        {%- endfor -%}
+                      </div>
+                    {%- elsif is_size -%}
+                      <div class="plp__pills">
+                        {%- for value in filter.values -%}
+                          <label class="plp__pill">
+                            <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                            <span>{{ value.label | escape }}</span>
+                          </label>
+                        {%- endfor -%}
+                      </div>
+                    {%- else -%}
+                      <div class="plp__checks">
+                        {%- for value in filter.values -%}
+                          <label class="plp__check">
+                            <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                            {{ value.label | escape }} <span>({{ value.count }})</span>
+                          </label>
+                        {%- endfor -%}
+                      </div>
+                    {%- endif -%}
+                {%- endcase -%}
+              </details>
+            {%- endcapture -%}
+
+            {%- liquid
+              if filter.type == 'price_range'
+                assign html_price = html_price | append: group
+              elsif is_color
+                assign html_color = html_color | append: group
+              elsif is_size
+                assign html_size = html_size | append: group
+              else
+                assign html_other = html_other | append: group
+              endif
+            -%}
           {%- endfor -%}
 
-          {%- comment -%} Dress Style: meni iz editora {%- endcomment -%}
-          {%- if s.style_menu != blank -%}
+          {%- comment -%} Kategorije na vrhu: meni iz editora ima prednost, inače tagovi koji nisu stilovi {%- endcomment -%}
+          {%- if s.category_menu != blank -%}
+            <ul class="plp__links" role="list">
+              {%- for link in s.category_menu.links -%}
+                <li><a href="{{ link.url }}">{{ link.title | escape }}{{ chevron_right }}</a></li>
+              {%- endfor -%}
+            </ul>
+          {%- elsif html_categories != blank -%}
+            <ul class="plp__links" role="list">{{ html_categories }}</ul>
+          {%- endif -%}
+
+          {{ html_price }}
+          {{ html_color }}
+          {{ html_size }}
+          {{ html_other }}
+
+          {%- if html_styles != blank -%}
             <details class="plp__group" open>
               <summary class="plp__group-title">{{ s.style_label | escape }}{{ chevron_up }}</summary>
-              <ul class="plp__links plp__links--plain" role="list">
-                {%- for link in s.style_menu.links -%}
-                  <li><a href="{{ link.url }}">{{ link.title | escape }}{{ chevron_right }}</a></li>
-                {%- endfor -%}
-              </ul>
+              <ul class="plp__links plp__links--plain" role="list">{{ html_styles }}</ul>
             </details>
           {%- endif -%}
+
 
           <button type="submit" class="plp__apply">{{ s.apply_label | escape }}</button>
           {%- if collection.filters.size > 0 -%}
@@ -354,6 +410,36 @@
     color: #000;
   }
   .plp__links svg {
+    width: 16px;
+    height: 16px;
+  }
+  /* Kategorije i stilovi iz tagova: red koji se štiklira (izgleda kao link iz dizajna) */
+  .plp__row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+  }
+  .plp__row input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .plp__row:hover,
+  .plp__row:has(input:checked) {
+    color: #000;
+  }
+  .plp__row:has(input:checked) span {
+    font-weight: 700;
+  }
+  .plp__row:has(input:focus-visible) {
+    outline: 2px solid #000;
+    outline-offset: 4px;
+  }
+  .plp__row svg {
     width: 16px;
     height: 16px;
   }
@@ -846,9 +932,12 @@
   "name": "t:general.collection",
   "settings": [
     { "type": "range", "id": "products_per_page", "label": "Proizvoda po strani", "min": 3, "max": 24, "step": 3, "default": 9 },
-    { "type": "link_list", "id": "category_menu", "label": "Meni kategorija (gore u filterima)", "info": "Ako je prazno, prikazuju se tipovi proizvoda iz kolekcije." },
+    { "type": "link_list", "id": "category_menu", "label": "Meni kategorija (gore u filterima)", "info": "Opciono. Ako je prazno, kategorije su tagovi proizvoda koji nisu stilovi (T-Shirt, Jeans...)." },
+    { "type": "text", "id": "style_tags", "label": "Tagovi koji su stilovi", "default": "Casual,Formal,Party,Gym", "info": "Odvojeni zarezom. Ovi tagovi idu u grupu Dress Style, ostali tagovi su kategorije na vrhu." },
     { "type": "text", "id": "style_label", "label": "Naslov za stilove", "default": "Dress Style" },
-    { "type": "link_list", "id": "style_menu", "label": "Meni stilova (Casual, Formal...)", "info": "Napravi meni u Online Store → Navigation." },
+    { "type": "text", "id": "colors_label", "label": "Naslov za boje", "default": "Colors" },
+    { "type": "text", "id": "size_label", "label": "Naslov za veličine", "default": "Size" },
+    { "type": "checkbox", "id": "show_availability", "label": "Prikaži filter dostupnosti (In stock)", "default": false },
     { "type": "text", "id": "filters_label", "label": "Naslov filtera", "default": "Filters" },
     { "type": "text", "id": "apply_label", "label": "Dugme za filtere", "default": "Apply Filter" },
     { "type": "text", "id": "clear_label", "label": "Link za brisanje filtera", "default": "Clear all" },
