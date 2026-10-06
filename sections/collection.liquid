@@ -1,47 +1,858 @@
 {% comment %}
-  This section is used in the collection template to render collection page
-  listing all products within a collection.
-
-  https://shopify.dev/docs/storefronts/themes/architecture/templates/collection
+  Strana kategorije (po Figma dizajnu): putanja, filteri levo, naslov + sortiranje,
+  mreža proizvoda (3 kolone) i stranice dole.
+  Filteri su pravi Shopify filteri (Search & Discovery app određuje koji postoje).
 {% endcomment %}
 
-<h1>{{ collection.title }}</h1>
+{%- liquid
+  assign s = section.settings
+  assign color_words = 'color,colour,boja'
+  assign size_words = 'size,veličina,velicina'
+-%}
 
-<div class="collection-products">
-  {% paginate collection.products by 20 %}
-    {% for product in collection.products %}
-      <div class="collection-product">
-        {% if product.featured_image %}
-          {% render 'image',
-            class: 'collection-product__image',
-            image: product.featured_image,
-            url: product.url,
-            width: 400,
-            height: 400,
-            crop: 'center'
-          %}
-        {% endif %}
-        <div class="collection-product__content">
-          <p>{{ product.title | escape | link_to: product.url }}</p>
-          <p>{{ product.price | money }}</p>
+{%- capture chevron_right -%}
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endcapture -%}
+{%- capture chevron_up -%}
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10L8 5.5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endcapture -%}
+
+<div class="plp full-width" data-plp>
+  <div class="plp__inner">
+
+    <nav class="plp__breadcrumbs" aria-label="Putanja">
+      <a href="{{ routes.root_url }}">Home</a>{{ chevron_right }}
+      <span aria-current="page">{{ collection.title | escape }}</span>
+    </nav>
+
+    {%- paginate collection.products by s.products_per_page -%}
+    <div class="plp__layout">
+
+      {%- comment -%} ---------- Filteri ---------- {%- endcomment -%}
+      <aside class="plp__filters" id="plp-filters-{{ section.id }}" data-plp-filters>
+        <form class="plp__filter-form" action="{{ collection.url }}" method="get">
+          {%- if collection.sort_by != blank -%}
+            <input type="hidden" name="sort_by" value="{{ collection.sort_by }}">
+          {%- endif -%}
+
+          <div class="plp__filters-head">
+            <h2 class="plp__filters-title">{{ s.filters_label | escape }}</h2>
+            <svg class="plp__filters-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v6m0 4v6m7-16v10m0 4v2m7-16v2m0 4v10M3 12h4m3 2h4m3-8h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            <button type="button" class="plp__filters-close" data-plp-close aria-label="Zatvori filtere">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          {%- comment -%} Kategorije: meni iz editora, ili tipovi proizvoda iz kolekcije {%- endcomment -%}
+          {%- liquid
+            assign type_count = 0
+            for type in collection.all_types
+              if type != blank
+                assign type_count = type_count | plus: 1
+              endif
+            endfor
+          -%}
+          {%- if s.category_menu != blank or type_count > 0 -%}
+            <ul class="plp__links" role="list">
+              {%- if s.category_menu != blank -%}
+                {%- for link in s.category_menu.links -%}
+                  <li><a href="{{ link.url }}">{{ link.title | escape }}{{ chevron_right }}</a></li>
+                {%- endfor -%}
+              {%- else -%}
+                {%- for type in collection.all_types -%}
+                  {%- if type != blank -%}
+                    <li><a href="{{ type | url_for_type }}">{{ type | escape }}{{ chevron_right }}</a></li>
+                  {%- endif -%}
+                {%- endfor -%}
+              {%- endif -%}
+            </ul>
+          {%- endif -%}
+
+          {%- comment -%} Shopify filteri (cena, boja, veličina...) {%- endcomment -%}
+          {%- for filter in collection.filters -%}
+            {%- liquid
+              assign filter_label = filter.label | downcase
+              assign is_color = false
+              assign is_size = false
+              if color_words contains filter_label
+                assign is_color = true
+              elsif size_words contains filter_label
+                assign is_size = true
+              endif
+            -%}
+            <details class="plp__group" open>
+              <summary class="plp__group-title">{{ filter.label | escape }}{{ chevron_up }}</summary>
+
+              {%- case filter.type -%}
+                {%- when 'price_range' -%}
+                  {%- liquid
+                    assign range_max = filter.range_max | divided_by: 100.0 | ceil
+                    assign current_min = filter.min_value.value | default: 0 | divided_by: 100.0 | floor
+                    assign current_max = filter.max_value.value | default: filter.range_max | divided_by: 100.0 | ceil
+                    if range_max < 1
+                      assign range_max = 1
+                    endif
+                  -%}
+                  <div class="plp__price" data-price-range style="--min: {{ current_min }}; --max: {{ current_max }}; --range: {{ range_max }};">
+                    <div class="plp__price-track"></div>
+                    <input type="range" min="0" max="{{ range_max }}" step="1" value="{{ current_min }}" name="{{ filter.min_value.param_name }}" aria-label="Najniža cena" data-price-min>
+                    <input type="range" min="0" max="{{ range_max }}" step="1" value="{{ current_max }}" name="{{ filter.max_value.param_name }}" aria-label="Najviša cena" data-price-max>
+                    <div class="plp__price-labels">
+                      <span data-price-min-label>{{ cart.currency.symbol }}{{ current_min }}</span>
+                      <span data-price-max-label>{{ cart.currency.symbol }}{{ current_max }}</span>
+                    </div>
+                  </div>
+
+                {%- when 'boolean' -%}
+                  <div class="plp__checks">
+                    {%- for value in filter.values -%}
+                      <label class="plp__check">
+                        <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                        {{ value.label | escape }}
+                      </label>
+                    {%- endfor -%}
+                  </div>
+
+                {%- else -%}
+                  {%- if is_color -%}
+                    <div class="plp__swatches">
+                      {%- for value in filter.values -%}
+                        {%- assign swatch = value.swatch.color | default: value.label | downcase | remove: ' ' -%}
+                        <label class="plp__swatch" style="--swatch: {{ swatch }};" title="{{ value.label | escape }} ({{ value.count }})">
+                          <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                          <span class="visually-hidden">{{ value.label | escape }}</span>
+                          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        </label>
+                      {%- endfor -%}
+                    </div>
+                  {%- elsif is_size -%}
+                    <div class="plp__pills">
+                      {%- for value in filter.values -%}
+                        <label class="plp__pill">
+                          <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                          <span>{{ value.label | escape }}</span>
+                        </label>
+                      {%- endfor -%}
+                    </div>
+                  {%- else -%}
+                    <div class="plp__checks">
+                      {%- for value in filter.values -%}
+                        <label class="plp__check">
+                          <input type="checkbox" name="{{ value.param_name }}" value="{{ value.value }}"{% if value.active %} checked{% endif %}>
+                          {{ value.label | escape }} <span>({{ value.count }})</span>
+                        </label>
+                      {%- endfor -%}
+                    </div>
+                  {%- endif -%}
+              {%- endcase -%}
+            </details>
+          {%- endfor -%}
+
+          {%- comment -%} Dress Style: meni iz editora {%- endcomment -%}
+          {%- if s.style_menu != blank -%}
+            <details class="plp__group" open>
+              <summary class="plp__group-title">{{ s.style_label | escape }}{{ chevron_up }}</summary>
+              <ul class="plp__links plp__links--plain" role="list">
+                {%- for link in s.style_menu.links -%}
+                  <li><a href="{{ link.url }}">{{ link.title | escape }}{{ chevron_right }}</a></li>
+                {%- endfor -%}
+              </ul>
+            </details>
+          {%- endif -%}
+
+          <button type="submit" class="plp__apply">{{ s.apply_label | escape }}</button>
+          {%- if collection.filters.size > 0 -%}
+            <a class="plp__clear" href="{{ collection.url }}{% if collection.sort_by != blank %}?sort_by={{ collection.sort_by }}{% endif %}">{{ s.clear_label | escape }}</a>
+          {%- endif -%}
+        </form>
+      </aside>
+      <div class="plp__overlay" data-plp-close></div>
+
+      {%- comment -%} ---------- Proizvodi ---------- {%- endcomment -%}
+      <div class="plp__main">
+        <div class="plp__head">
+          <h1 class="plp__title">{{ collection.title | escape }}</h1>
+          <div class="plp__meta">
+            {%- liquid
+              assign first_item = paginate.current_offset | plus: 1
+              assign last_item = paginate.current_offset | plus: paginate.page_size
+              if last_item > paginate.items
+                assign last_item = paginate.items
+              endif
+            -%}
+            <span class="plp__count">
+              {%- if paginate.items > 0 -%}Showing {{ first_item }}-{{ last_item }} of {{ paginate.items }} Products{%- else -%}0 Products{%- endif -%}
+            </span>
+            <label class="plp__sort">
+              Sort by:
+              <select data-plp-sort aria-label="Sortiranje">
+                {%- assign current_sort = collection.sort_by | default: collection.default_sort_by -%}
+                {%- for option in collection.sort_options -%}
+                  <option value="{{ option.value }}"{% if option.value == current_sort %} selected{% endif %}>{{ option.name | escape }}</option>
+                {%- endfor -%}
+              </select>
+            </label>
+          </div>
+          <button type="button" class="plp__open-filters" data-plp-open aria-controls="plp-filters-{{ section.id }}" aria-label="Otvori filtere">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4v6m0 4v6m7-16v10m0 4v2m7-16v2m0 4v10M3 12h4m3 2h4m3-8h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
         </div>
-      </div>
-    {% endfor %}
 
-    {{ paginate | default_pagination }}
-  {% endpaginate %}
+        {%- if collection.products.size > 0 -%}
+          <ul class="plp__grid" role="list">
+            {%- for product in collection.products -%}
+              <li>{% render 'product-card', product: product %}</li>
+            {%- endfor -%}
+          </ul>
+        {%- else -%}
+          <p class="plp__empty">{{ s.empty_text | escape }}</p>
+        {%- endif -%}
+
+        {%- if paginate.pages > 1 -%}
+          <nav class="plp__pagination" aria-label="Stranice">
+            {%- if paginate.previous -%}
+              <a class="plp__page-btn" href="{{ paginate.previous.url }}">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H4m0 0l5-5m-5 5l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Previous
+              </a>
+            {%- else -%}
+              <span class="plp__page-btn is-disabled">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H4m0 0l5-5m-5 5l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Previous
+              </span>
+            {%- endif -%}
+
+            <ul class="plp__pages" role="list">
+              {%- for part in paginate.parts -%}
+                <li>
+                  {%- if part.is_link -%}
+                    <a class="plp__page" href="{{ part.url }}">{{ part.title }}</a>
+                  {%- elsif part.title == paginate.current_page -%}
+                    <span class="plp__page is-current" aria-current="page">{{ part.title }}</span>
+                  {%- else -%}
+                    <span class="plp__page">{{ part.title }}</span>
+                  {%- endif -%}
+                </li>
+              {%- endfor -%}
+            </ul>
+
+            {%- if paginate.next -%}
+              <a class="plp__page-btn" href="{{ paginate.next.url }}">
+                Next
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+            {%- else -%}
+              <span class="plp__page-btn is-disabled">
+                Next
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+      </div>
+    </div>
+    {%- endpaginate -%}
+  </div>
 </div>
 
 {% stylesheet %}
-  .collection-products {
+  .plp__inner {
+    width: min(1240px, 100% - 32px);
+    margin: 0 auto;
+    padding: 24px 0 80px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .plp .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+
+  /* ---------- Putanja ---------- */
+  .plp__breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 24px;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .plp__breadcrumbs a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .plp__breadcrumbs svg {
+    width: 16px;
+    height: 16px;
+    margin: 0 4px;
+  }
+  .plp__breadcrumbs [aria-current] {
+    color: #000;
+  }
+
+  /* ---------- Raspored ---------- */
+  .plp__layout {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+    grid-template-columns: 295px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  /* ---------- Filteri ---------- */
+  .plp__filters {
+    padding: 20px 24px 28px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    background: #fff;
+  }
+  .plp__filters-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .plp__filters-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #000;
+  }
+  .plp__filters-icon {
+    width: 24px;
+    height: 24px;
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .plp__filters-close {
+    display: none;
+  }
+
+  .plp__links {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin: 0;
+    padding: 24px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    list-style: none;
+  }
+  .plp__links--plain {
+    padding: 0;
+    border: 0;
+  }
+  .plp__links a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+    text-decoration: none;
+  }
+  .plp__links a:hover {
+    color: #000;
+  }
+  .plp__links svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .plp__group {
+    padding: 24px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .plp__group-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 20px;
+    font-weight: 700;
+    color: #000;
+    list-style: none;
+    cursor: pointer;
+  }
+  .plp__group-title::-webkit-details-marker {
+    display: none;
+  }
+  .plp__group-title svg {
+    width: 16px;
+    height: 16px;
+    transition: transform 0.2s;
+  }
+  .plp__group:not([open]) .plp__group-title svg {
+    transform: rotate(180deg);
+  }
+  .plp__group[open] > :not(summary) {
+    margin-top: 20px;
+  }
+
+  /* Cena: dva klizača jedan preko drugog */
+  .plp__price {
+    position: relative;
+    height: 52px;
+  }
+  .plp__price-track {
+    position: absolute;
+    top: 9px;
+    left: 0;
+    right: 0;
+    height: 6px;
+    border-radius: 6px;
+    background: linear-gradient(
+      to right,
+      #f0f0f0 calc(var(--min) / var(--range) * 100%),
+      #000 calc(var(--min) / var(--range) * 100%),
+      #000 calc(var(--max) / var(--range) * 100%),
+      #f0f0f0 calc(var(--max) / var(--range) * 100%)
+    );
+  }
+  .plp__price input[type='range'] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 24px;
+    margin: 0;
+    background: none;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .plp__price input[type='range']::-webkit-slider-thumb {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 50%;
+    background: #000;
+    cursor: pointer;
+    pointer-events: auto;
+    -webkit-appearance: none;
+  }
+  .plp__price input[type='range']::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border: 0;
+    border-radius: 50%;
+    background: #000;
+    cursor: pointer;
+    pointer-events: auto;
+  }
+  .plp__price input[type='range']::-moz-range-track {
+    background: none;
+  }
+  .plp__price-labels {
+    position: absolute;
+    top: 30px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 500;
+    color: #000;
+  }
+
+  /* Boje */
+  .plp__swatches {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .plp__swatch {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 37px;
+    height: 37px;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    background: var(--swatch, #ccc);
+    color: #fff;
+    cursor: pointer;
+  }
+  .plp__swatch input,
+  .plp__pill input,
+  .plp__check input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .plp__swatch svg {
+    width: 16px;
+    height: 16px;
+    opacity: 0;
+  }
+  .plp__swatch:has(input:checked) svg {
+    opacity: 1;
+  }
+  .plp__swatch:has(input:focus-visible),
+  .plp__pill:has(input:focus-visible) span {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+
+  /* Veličine */
+  .plp__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .plp__pill span {
+    display: inline-flex;
+    align-items: center;
+    height: 39px;
+    padding: 0 20px;
+    border-radius: 62px;
+    background: #f0f0f0;
+    color: rgba(0, 0, 0, 0.6);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .plp__pill input:checked + span {
+    background: #000;
+    color: #fff;
+  }
+
+  /* Ostali filteri: obične kvačice */
+  .plp__checks {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .plp__check {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+    cursor: pointer;
+  }
+  .plp__check::before {
+    content: '';
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid rgba(0, 0, 0, 0.3);
+    border-radius: 5px;
+  }
+  .plp__check:has(input:checked) {
+    color: #000;
+  }
+  .plp__check:has(input:checked)::before {
+    border-color: #000;
+    background: #000 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 8.5l3 3 6-7' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat;
+  }
+  .plp__check span {
+    color: rgba(0, 0, 0, 0.4);
+  }
+
+  .plp__apply {
+    width: 100%;
+    height: 48px;
+    margin-top: 24px;
+    border: 0;
+    border-radius: 62px;
+    background: #000;
+    color: #fff;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .plp__clear {
+    display: block;
+    margin-top: 12px;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.6);
+    text-align: center;
+  }
+
+  /* ---------- Naslov, broj, sortiranje ---------- */
+  .plp__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .plp__title {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 700;
+    color: #000;
+  }
+  .plp__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .plp__sort {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .plp__sort select {
+    padding: 0 20px 0 0;
+    border: 0;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right center / 16px no-repeat;
+    color: #000;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .plp__open-filters {
+    display: none;
+  }
+
+  /* ---------- Mreža proizvoda ---------- */
+  .plp__grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 36px 20px;
+    margin: 0;
+    padding: 0 0 32px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    list-style: none;
+  }
+  .plp__empty {
+    padding: 60px 0;
+    color: rgba(0, 0, 0, 0.6);
+    text-align: center;
+  }
+
+  /* ---------- Stranice ---------- */
+  .plp__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 20px;
+  }
+  .plp__page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    color: #000;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .plp__page-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .plp__page-btn.is-disabled {
+    opacity: 0.4;
+  }
+  .plp__pages {
+    display: flex;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .plp__page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .plp__page.is-current {
+    background: rgba(0, 0, 0, 0.06);
+    color: #000;
+  }
+
+  .plp__overlay {
+    display: none;
+  }
+
+  /* ---------- MOBILNI ---------- */
+  @media (max-width: 989px) {
+    .plp__inner {
+      padding-bottom: 50px;
+    }
+    .plp__breadcrumbs {
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .plp__layout {
+      grid-template-columns: 1fr;
+    }
+
+    /* Filteri kao panel koji izlazi odozdo */
+    .plp__filters {
+      position: fixed;
+      inset: auto 0 0 0;
+      z-index: 50;
+      max-height: 85vh;
+      overflow-y: auto;
+      border-radius: 20px 20px 0 0;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    .plp.is-filters-open .plp__filters {
+      transform: none;
+    }
+    .plp__overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      display: block;
+      background: rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    }
+    .plp.is-filters-open .plp__overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .plp__filters-icon {
+      display: none;
+    }
+    .plp__filters-close {
+      display: flex;
+      padding: 0;
+      border: 0;
+      background: none;
+      color: rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+    }
+    .plp__filters-close svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .plp__head {
+      flex-wrap: wrap;
+      align-items: flex-end;
+    }
+    .plp__title {
+      font-size: 24px;
+    }
+    .plp__meta {
+      order: 3;
+      flex-basis: 100%;
+      justify-content: space-between;
+      font-size: 14px;
+    }
+    .plp__open-filters {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: #f0f0f0;
+      color: #000;
+      cursor: pointer;
+    }
+    .plp__open-filters svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .plp__grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px 14px;
+      padding-bottom: 24px;
+    }
+    .plp__page-btn {
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .plp__page {
+      min-width: 32px;
+      height: 32px;
+      font-size: 12px;
+    }
   }
 {% endstylesheet %}
+
+{% javascript %}
+  document.querySelectorAll('[data-plp]').forEach((plp) => {
+    // Mobilni: otvaranje i zatvaranje filtera
+    plp.querySelectorAll('[data-plp-open]').forEach((button) =>
+      button.addEventListener('click', () => plp.classList.add('is-filters-open'))
+    );
+    plp.querySelectorAll('[data-plp-close]').forEach((button) =>
+      button.addEventListener('click', () => plp.classList.remove('is-filters-open'))
+    );
+
+    // Sortiranje: menja ?sort_by= u adresi i zadržava filtere
+    plp.querySelector('[data-plp-sort]')?.addEventListener('change', (event) => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('sort_by', event.target.value);
+      url.searchParams.delete('page');
+      window.location.href = url.toString();
+    });
+
+    // Cena: dva klizača ne smeju da se preklope, natpisi i linija prate vrednosti
+    plp.querySelectorAll('[data-price-range]').forEach((range) => {
+      const min = range.querySelector('[data-price-min]');
+      const max = range.querySelector('[data-price-max]');
+      const minLabel = range.querySelector('[data-price-min-label]');
+      const maxLabel = range.querySelector('[data-price-max-label]');
+      const symbol = minLabel.textContent.replace(/[\d.,\s]/g, '');
+
+      const update = (changed) => {
+        if (Number(min.value) > Number(max.value)) {
+          if (changed === min) min.value = max.value;
+          else max.value = min.value;
+        }
+        range.style.setProperty('--min', min.value);
+        range.style.setProperty('--max', max.value);
+        minLabel.textContent = symbol + min.value;
+        maxLabel.textContent = symbol + max.value;
+      };
+      min.addEventListener('input', () => update(min));
+      max.addEventListener('input', () => update(max));
+    });
+
+    // Ne šalji filter cene ako nije pomeren (da adresa ostane čista)
+    plp.querySelector('.plp__filter-form')?.addEventListener('submit', (event) => {
+      event.target.querySelectorAll('[data-price-range]').forEach((range) => {
+        const min = range.querySelector('[data-price-min]');
+        const max = range.querySelector('[data-price-max]');
+        if (Number(min.value) === 0) min.disabled = true;
+        if (Number(max.value) === Number(max.max)) max.disabled = true;
+      });
+    });
+  });
+{% endjavascript %}
 
 {% schema %}
 {
   "name": "t:general.collection",
-  "settings": []
+  "settings": [
+    { "type": "range", "id": "products_per_page", "label": "Proizvoda po strani", "min": 3, "max": 24, "step": 3, "default": 9 },
+    { "type": "link_list", "id": "category_menu", "label": "Meni kategorija (gore u filterima)", "info": "Ako je prazno, prikazuju se tipovi proizvoda iz kolekcije." },
+    { "type": "text", "id": "style_label", "label": "Naslov za stilove", "default": "Dress Style" },
+    { "type": "link_list", "id": "style_menu", "label": "Meni stilova (Casual, Formal...)", "info": "Napravi meni u Online Store → Navigation." },
+    { "type": "text", "id": "filters_label", "label": "Naslov filtera", "default": "Filters" },
+    { "type": "text", "id": "apply_label", "label": "Dugme za filtere", "default": "Apply Filter" },
+    { "type": "text", "id": "clear_label", "label": "Link za brisanje filtera", "default": "Clear all" },
+    { "type": "text", "id": "empty_text", "label": "Tekst kad nema proizvoda", "default": "No products found." }
+  ]
 }
 {% endschema %}

@@ -1,0 +1,157 @@
+{% comment %}
+  Kartica proizvoda (lista proizvoda / kategorija).
+  Upotreba: {% render 'product-card', product: product %}
+{% endcomment %}
+
+{%- liquid
+  assign rating = product.metafields.reviews.rating.value
+  assign discount = 0
+  if product.compare_at_price > product.price
+    assign discount = product.compare_at_price | minus: product.price | times: 100.0 | divided_by: product.compare_at_price | round
+  endif
+-%}
+
+<a class="pcard" href="{{ product.url }}">
+  <div class="pcard__media">
+    {%- if product.featured_image -%}
+      {{ product.featured_image | image_url: width: 600 | image_tag: widths: '300, 450, 600', sizes: '(max-width: 989px) 50vw, 295px', loading: 'lazy', class: 'pcard__img' }}
+    {%- else -%}
+      {{ 'product-apparel-1' | placeholder_svg_tag: 'pcard__img' }}
+    {%- endif -%}
+  </div>
+
+  <h3 class="pcard__title">{{ product.title | escape }}</h3>
+
+  {%- if rating != blank -%}
+    {%- assign rating_full = rating.rating | floor -%}
+    {%- assign rating_frac = rating.rating | minus: rating_full -%}
+    <div class="pcard__rating">
+      <span class="pcard__stars" style="--full: {{ rating_full }}; --frac: {{ rating_frac }};" aria-label="{{ rating.rating }} / {{ rating.scale_max }}">
+        <span class="pcard__stars-fill">
+          {%- for i in (1..5) -%}
+            <svg viewBox="0 0 20 19" aria-hidden="true"><path d="M10 0l2.94 6.06 6.56.92-4.79 4.62 1.17 6.56L10 15.04 4.12 18.16l1.17-6.56L.5 6.98l6.56-.92L10 0z" fill="currentColor"/></svg>
+          {%- endfor -%}
+        </span>
+      </span>
+      <span class="pcard__rating-text">{{ rating.rating | round: 1 }}/<span>{{ rating.scale_max | round }}</span></span>
+    </div>
+  {%- endif -%}
+
+  <div class="pcard__price">
+    <span>{{ product.price | money_without_trailing_zeros }}</span>
+    {%- if discount > 0 -%}
+      <s class="pcard__compare">{{ product.compare_at_price | money_without_trailing_zeros }}</s>
+      <span class="pcard__badge">-{{ discount }}%</span>
+    {%- endif -%}
+  </div>
+</a>
+
+{% stylesheet %}
+  .pcard {
+    display: block;
+    color: #000;
+    text-decoration: none;
+  }
+  .pcard__media {
+    aspect-ratio: 295 / 298;
+    margin-bottom: 16px;
+    overflow: hidden;
+    border-radius: 20px;
+    background: #f0eeed;
+  }
+  .pcard__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+  }
+  .pcard:hover .pcard__img {
+    transform: scale(1.04);
+  }
+  .pcard__title {
+    margin: 0 0 8px;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.35;
+    color: #000;
+    text-transform: none;
+  }
+  .pcard__rating {
+    --star: 18px;
+    --star-gap: 5px;
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    margin-bottom: 8px;
+  }
+  .pcard__stars {
+    display: block;
+    width: calc(5 * var(--star) + 4 * var(--star-gap));
+  }
+  .pcard__stars-fill {
+    display: flex;
+    gap: var(--star-gap);
+    width: calc(var(--full) * (var(--star) + var(--star-gap)) + var(--frac) * var(--star));
+    overflow: hidden;
+    color: #ffc633;
+  }
+  .pcard__stars-fill svg {
+    flex: 0 0 var(--star);
+    width: var(--star);
+    height: var(--star);
+  }
+  .pcard__rating-text {
+    font-size: 14px;
+  }
+  .pcard__rating-text span {
+    color: #666;
+  }
+  .pcard__price {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-size: 24px;
+    font-weight: 700;
+  }
+  .pcard__compare {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .pcard__badge {
+    padding: 6px 14px;
+    border-radius: 62px;
+    background: rgba(255, 51, 51, 0.1);
+    color: #f33;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  @media (max-width: 989px) {
+    .pcard__media {
+      aspect-ratio: 172 / 174;
+      margin-bottom: 10px;
+      border-radius: 14px;
+    }
+    .pcard__title {
+      margin-bottom: 4px;
+      font-size: 16px;
+    }
+    .pcard__rating {
+      --star: 15px;
+      --star-gap: 4px;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .pcard__rating-text {
+      font-size: 12px;
+    }
+    .pcard__price {
+      gap: 5px;
+      font-size: 20px;
+    }
+    .pcard__badge {
+      padding: 4px 10px;
+      font-size: 10px;
+    }
+  }
+{% endstylesheet %}
