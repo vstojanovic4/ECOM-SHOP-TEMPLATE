@@ -73,7 +73,14 @@
 
       {%- comment -%} Informacije i forma {%- endcomment -%}
       <div class="pdp__info">
-        <h1 class="pdp__title">{{ product.title | escape }}</h1>
+        {%- comment -%} Reč sa crticom ostaje u jednom redu, da "T-shirt" ne bi pukao na "T-" i "SHIRT" {%- endcomment -%}
+        {%- assign title_words = product.title | escape | split: ' ' -%}
+        <h1 class="pdp__title">
+          {%- for word in title_words -%}
+            {%- if word contains '-' -%}<span class="pdp__nowrap">{{ word }}</span>{%- else -%}{{ word }}{%- endif -%}
+            {%- unless forloop.last -%}{{ ' ' }}{%- endunless -%}
+          {%- endfor -%}
+        </h1>
 
         {%- if rating != blank -%}
           {%- assign rating_full = rating.rating | floor -%}
@@ -106,12 +113,25 @@
           <input type="hidden" name="id" value="{{ current_variant.id }}" data-variant-id>
 
           {%- unless product.has_only_default_variant -%}
+            {%- comment -%} Kao u dizajnu: prvo boja, pa ostale opcije (bez obzira na redosled u adminu) {%- endcomment -%}
+            {%- for pass in (1..2) -%}
             {%- for option in product.options_with_values -%}
-              {%- assign option_name = option.name | downcase -%}
-              {%- assign is_color = false -%}
-              {%- if color_names contains option_name -%}{%- assign is_color = true -%}{%- endif -%}
+              {%- liquid
+                assign option_name = option.name | downcase
+                assign option_index = option.position | minus: 1
+                assign is_color = false
+                if color_names contains option_name
+                  assign is_color = true
+                endif
+                if pass == 1 and is_color == false
+                  continue
+                endif
+                if pass == 2 and is_color
+                  continue
+                endif
+              -%}
 
-              <fieldset class="pdp__option" data-option-index="{{ forloop.index0 }}">
+              <fieldset class="pdp__option" data-option-index="{{ option_index }}">
                 <legend class="pdp__option-label">
                   {%- if is_color -%}{{ s.color_label | escape }}{%- elsif option_name == 'size' -%}{{ s.size_label | escape }}{%- else -%}{{ option.name | escape }}{%- endif -%}
                 </legend>
@@ -119,11 +139,11 @@
                 <div class="{% if is_color %}pdp__swatches{% else %}pdp__pills{% endif %}">
                   {%- for value in option.values -%}
                     {%- liquid
-                      assign input_id = section.id | append: '-' | append: forloop.parentloop.index0 | append: '-' | append: forloop.index0
+                      assign input_id = section.id | append: '-' | append: option_index | append: '-' | append: forloop.index0
                       assign swatch_color = value.swatch.color | default: value
                       assign swatch_color = swatch_color | downcase | remove: ' '
                     -%}
-                    <input type="radio" class="pdp__radio" id="{{ input_id }}" name="option-{{ forloop.parentloop.index0 }}" value="{{ value | escape }}"{% if value == option.selected_value %} checked{% endif %}>
+                    <input type="radio" class="pdp__radio" id="{{ input_id }}" name="option-{{ option_index }}" value="{{ value | escape }}"{% if value == option.selected_value %} checked{% endif %}>
                     {%- if is_color -%}
                       <label for="{{ input_id }}" class="pdp__swatch" style="--swatch: {{ swatch_color }};" title="{{ value | escape }}">
                         <span class="visually-hidden">{{ value | escape }}</span>
@@ -135,6 +155,7 @@
                   {%- endfor -%}
                 </div>
               </fieldset>
+            {%- endfor -%}
             {%- endfor -%}
           {%- endunless -%}
 
@@ -305,6 +326,9 @@
     color: #000;
     text-transform: uppercase;
   }
+  .pdp__nowrap {
+    white-space: nowrap;
+  }
   .pdp__rating {
     --star: 24px;
     --star-gap: 7px;
@@ -378,11 +402,17 @@
     border: 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   }
+  /* float: legend se inače "lepi" za gornju ivicu fieldseta i pravi višak razmaka */
   .pdp__option-label {
+    float: left;
+    width: 100%;
     margin-bottom: 16px;
     padding: 0;
     font-size: 16px;
     color: rgba(0, 0, 0, 0.6);
+  }
+  .pdp__option-label + * {
+    clear: both;
   }
   .pdp__radio {
     position: absolute;
@@ -635,9 +665,11 @@
     form.addEventListener('change', (event) => {
       if (!event.target.classList.contains('pdp__radio')) return;
 
-      const selected = [...form.querySelectorAll('.pdp__option')].map(
-        (fieldset) => fieldset.querySelector('.pdp__radio:checked')?.value
-      );
+      // Opcije mogu biti prikazane drugim redom nego u adminu, pa se slažu po data-option-index
+      const selected = [];
+      form.querySelectorAll('.pdp__option').forEach((fieldset) => {
+        selected[fieldset.dataset.optionIndex] = fieldset.querySelector('.pdp__radio:checked')?.value;
+      });
       const variant = variants.find((v) => v.options.every((value, i) => value === selected[i]));
 
       if (!variant) {
