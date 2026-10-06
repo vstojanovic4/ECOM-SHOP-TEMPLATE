@@ -68,53 +68,11 @@
         "button_link": "",
         "show_divider": false
       }
-    },
-    "reviews_CmTtJT": {
-      "type": "reviews",
-      "blocks": {
-        "review_6nMjzD": {
-          "type": "review",
-          "settings": {
-            "name": "Sarah M.",
-            "rating": 5,
-            "verified": true,
-            "text": "<p>\"I'm blown away by the quality and style of the clothes I received from Shop.co.\"</p>"
-          }
-        },
-        "review_jHnQd6": {
-          "type": "review",
-          "settings": {
-            "name": "Sarah M.",
-            "rating": 5,
-            "verified": true,
-            "text": "<p>\"I'm blown away by the quality and style of the clothes I received from Shop.co.\"</p>"
-          }
-        },
-        "review_8dKzX6": {
-          "type": "review",
-          "settings": {
-            "name": "Sarah M.",
-            "rating": 5,
-            "verified": true,
-            "text": "<p>\"I'm blown away by the quality and style of the clothes I received from Shop.co.\"</p>"
-          }
-        }
-      },
-      "block_order": [
-        "review_6nMjzD",
-        "review_jHnQd6",
-        "review_8dKzX6"
-      ],
-      "name": "Recenzije",
-      "settings": {
-        "heading": "Our happy customers"
-      }
     }
   },
   "order": [
     "main",
     "product-tabs",
-    "reviews_CmTtJT",
     "you-might-also-like"
   ]
 }
