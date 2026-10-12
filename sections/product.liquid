@@ -846,61 +846,102 @@
     const idInput = pdp.querySelector('[data-variant-id]');
     const addButton = pdp.querySelector('[data-add]');
 
-    // ---------- Galerija: slajder ----------
+    // ---------- Galerija ----------
+    // Beskonačna petlja: na početak se doda kopija poslednje slike, a na kraj kopija prve.
+    // Kad slajder stigne na kopiju, neprimetno skoči na pravu sliku, pa se uvek može ići u istu stranu.
+    const makeLoop = (track, onChange) => {
+      const count = track.children.length;
+      const state = { index: 0, count, goTo: () => {} };
+      if (count < 2) return state;
+
+      const cloneOf = (slide) => {
+        const clone = slide.cloneNode(true);
+        clone.setAttribute('aria-hidden', 'true');
+        clone.dataset.clone = '';
+        clone.querySelectorAll('button, a').forEach((el) => el.setAttribute('tabindex', '-1'));
+        clone.querySelectorAll('img').forEach((img) => img.setAttribute('loading', 'eager'));
+        return clone;
+      };
+      track.prepend(cloneOf(track.lastElementChild));
+      track.append(cloneOf(track.children[1]));
+
+      const width = () => track.clientWidth;
+      const jump = (position) => {
+        track.style.scrollBehavior = 'auto';
+        track.style.scrollSnapType = 'none';
+        track.scrollLeft = position * width();
+        track.offsetHeight; // primeni odmah, pa vrati snap
+        track.style.scrollSnapType = '';
+        track.style.scrollBehavior = '';
+      };
+      const settle = () => {
+        let position = Math.round(track.scrollLeft / width());
+        if (position === 0) {
+          position = count;
+          jump(position);
+        } else if (position === count + 1) {
+          position = 1;
+          jump(position);
+        }
+        const index = position - 1;
+        if (index !== state.index) {
+          state.index = index;
+          onChange(index);
+        }
+      };
+
+      // index može biti -1 ili count (kopije), petlja to sama ispravi posle animacije
+      state.goTo = (index, smooth = true) => {
+        track.scrollTo({ left: (index + 1) * width(), behavior: smooth ? 'smooth' : 'auto' });
+        if (!smooth) settle();
+      };
+
+      let timer;
+      track.addEventListener('scroll', () => {
+        clearTimeout(timer);
+        timer = setTimeout(settle, 90);
+      });
+      window.addEventListener('resize', () => jump(state.index + 1));
+      jump(1);
+      return state;
+    };
+
     const gallery = pdp.querySelector('[data-gallery]');
     const slides = gallery.querySelector('[data-slides]');
-    const slideCount = slides.children.length;
-    const prevButton = gallery.querySelector('[data-slide-prev]');
-    const nextButton = gallery.querySelector('[data-slide-next]');
-    let current = 0;
+    const thumbsList = gallery.querySelector('.pdp__thumbs');
 
-    // Koji je slajd trenutno vidljiv (posle prevlačenja ili klika)
-    const markActive = (index) => {
-      current = index;
+    // Aktivna sličica; red sličica se pomera samo levo-desno (strana ostaje gde jeste)
+    const markThumb = (index) => {
       gallery.querySelectorAll('[data-thumb]').forEach((thumb) => {
         const active = Number(thumb.dataset.thumb) === index;
         thumb.classList.toggle('is-active', active);
-        if (active) {
-          thumb.setAttribute('aria-current', 'true');
-          thumb.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-        } else {
-          thumb.removeAttribute('aria-current');
+        if (active) thumb.setAttribute('aria-current', 'true');
+        else thumb.removeAttribute('aria-current');
+        if (active && thumbsList) {
+          const item = thumb.parentElement;
+          const left = item.offsetLeft - thumbsList.offsetLeft;
+          if (left < thumbsList.scrollLeft || left + item.offsetWidth > thumbsList.scrollLeft + thumbsList.clientWidth) {
+            thumbsList.scrollTo({ left, behavior: 'smooth' });
+          }
         }
       });
-      if (prevButton) prevButton.disabled = index === 0;
-      if (nextButton) nextButton.disabled = index === slideCount - 1;
     };
 
-    const goTo = (index, smooth = true) => {
-      const target = Math.max(0, Math.min(slideCount - 1, index));
-      slides.scrollTo({ left: target * slides.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
-      markActive(target);
-    };
+    const main = makeLoop(slides, markThumb);
+    markThumb(0);
 
-    // Telefon: posle prevlačenja prstom ažuriraj sličice
-    let scrollTimer;
-    slides.addEventListener('scroll', () => {
-      clearTimeout(scrollTimer);
-      scrollTimer = setTimeout(() => {
-        const index = Math.round(slides.scrollLeft / slides.clientWidth);
-        if (index !== current) markActive(index);
-      }, 80);
-    });
-
-    // Desktop: klik na sličice i strelice
+    // Desktop: klik na sličice i strelice (telefon: prevlačenje, isto preko makeLoop)
     gallery.querySelectorAll('[data-thumb]').forEach((thumb) =>
-      thumb.addEventListener('click', () => goTo(Number(thumb.dataset.thumb)))
+      thumb.addEventListener('click', () => main.goTo(Number(thumb.dataset.thumb)))
     );
-    prevButton?.addEventListener('click', () => goTo(current - 1));
-    nextButton?.addEventListener('click', () => goTo(current + 1));
-    window.addEventListener('resize', () => goTo(current, false));
-    markActive(0);
+    gallery.querySelector('[data-slide-prev]')?.addEventListener('click', () => main.goTo(main.index - 1));
+    gallery.querySelector('[data-slide-next]')?.addEventListener('click', () => main.goTo(main.index + 1));
 
     // Varijanta sa svojom slikom: prebaci slajder na nju
     const showMedia = (mediaId) => {
       if (!mediaId) return;
-      const slide = slides.querySelector(`[data-media-id="${mediaId}"]`);
-      if (slide) goTo(Number(slide.dataset.index));
+      const slide = slides.querySelector(`[data-media-id="${mediaId}"]:not([data-clone])`);
+      if (slide) main.goTo(Number(slide.dataset.index));
     };
 
     // ---------- Zoom preko celog ekrana ----------
@@ -908,52 +949,39 @@
     if (lightbox) {
       const lbSlides = lightbox.querySelector('[data-lb-slides]');
       const counter = lightbox.querySelector('[data-lb-counter]');
-      let lbCurrent = 0;
 
       const resetZoom = () => {
         lightbox.classList.remove('is-zoomed');
         lightbox.querySelectorAll('[data-zoom-frame]').forEach((frame) => frame.classList.remove('is-zoomed'));
       };
-      const lbGoTo = (index, smooth = true) => {
+      const lb = makeLoop(lbSlides, (index) => {
         resetZoom();
-        lbCurrent = Math.max(0, Math.min(slideCount - 1, index));
-        lbSlides.scrollTo({ left: lbCurrent * lbSlides.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
-        if (counter) counter.textContent = `${lbCurrent + 1} / ${slideCount}`;
-      };
+        if (counter) counter.textContent = `${index + 1} / ${lb.count}`;
+      });
 
-      // Klik na glavnu sliku otvara zoom na toj slici
+      // Klik na glavnu sliku (i na kopije u petlji) otvara zoom na toj slici
       gallery.querySelectorAll('[data-zoom-open]').forEach((trigger) =>
         trigger.addEventListener('click', () => {
           lightbox.showModal();
-          lbGoTo(Number(trigger.dataset.zoomOpen), false);
+          lb.goTo(Number(trigger.dataset.zoomOpen), false);
+          if (counter) counter.textContent = `${lb.index + 1} / ${lb.count}`;
         })
       );
 
-      // Telefon: prevlačenje u zoomu
-      let lbTimer;
-      lbSlides.addEventListener('scroll', () => {
-        if (lightbox.classList.contains('is-zoomed')) return;
-        clearTimeout(lbTimer);
-        lbTimer = setTimeout(() => {
-          lbCurrent = Math.round(lbSlides.scrollLeft / lbSlides.clientWidth);
-          if (counter) counter.textContent = `${lbCurrent + 1} / ${slideCount}`;
-        }, 80);
-      });
-
       // Desktop: strelice i tasteri ← →
-      lightbox.querySelector('[data-lb-prev]')?.addEventListener('click', () => lbGoTo(lbCurrent - 1));
-      lightbox.querySelector('[data-lb-next]')?.addEventListener('click', () => lbGoTo(lbCurrent + 1));
+      lightbox.querySelector('[data-lb-prev]')?.addEventListener('click', () => lb.goTo(lb.index - 1));
+      lightbox.querySelector('[data-lb-next]')?.addEventListener('click', () => lb.goTo(lb.index + 1));
       lightbox.addEventListener('keydown', (event) => {
         if (lightbox.classList.contains('is-zoomed')) return;
-        if (event.key === 'ArrowLeft') lbGoTo(lbCurrent - 1);
-        if (event.key === 'ArrowRight') lbGoTo(lbCurrent + 1);
+        if (event.key === 'ArrowLeft') lb.goTo(lb.index - 1);
+        if (event.key === 'ArrowRight') lb.goTo(lb.index + 1);
       });
 
       lightbox.querySelector('[data-lb-close]').addEventListener('click', () => lightbox.close());
       // Kad se zoom zatvori, glavni slajder pokazuje poslednju gledanu sliku
       lightbox.addEventListener('close', () => {
         resetZoom();
-        goTo(lbCurrent, false);
+        main.goTo(lb.index, false);
       });
 
       // Klik na sliku u zoomu: uvećaj 2× na mestu klika / vrati
