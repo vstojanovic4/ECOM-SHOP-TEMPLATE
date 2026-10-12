@@ -35,39 +35,82 @@
 
     <div class="pdp__grid">
 
-      {%- comment -%} Galerija: male slike + velika slika {%- endcomment -%}
-      <div class="pdp__gallery">
-        <div class="pdp__main-media">
-          {%- for media in product.media -%}
-            {%- if media.media_type == 'image' -%}
-              <div class="pdp__main-item{% if forloop.first %} is-active{% endif %}" data-media-id="{{ media.id }}">
-                {%- liquid
-                  if forloop.first
-                    assign loading = 'eager'
-                  else
-                    assign loading = 'lazy'
-                  endif
-                -%}
-                {{ media | image_url: width: 1100 | image_tag: widths: '450, 700, 900, 1100', sizes: '(max-width: 989px) 100vw, 444px', loading: loading, class: 'pdp__main-img' }}
-              </div>
-            {%- endif -%}
-          {%- else -%}
-            <div class="pdp__main-item is-active">{{ 'product-apparel-1' | placeholder_svg_tag: 'pdp__main-img' }}</div>
-          {%- endfor -%}
-        </div>
-
-        {%- if product.media.size > 1 -%}
-          <ul class="pdp__thumbs" role="list">
-            {%- for media in product.media -%}
-              {%- if media.media_type == 'image' -%}
-                <li>
-                  <button type="button" class="pdp__thumb{% if forloop.first %} is-active{% endif %}" data-thumb="{{ media.id }}" aria-label="Slika {{ forloop.index }}">
-                    {{ media | image_url: width: 320 | image_tag: widths: '160, 320', sizes: '152px', loading: 'lazy', class: 'pdp__thumb-img' }}
-                  </button>
-                </li>
-              {%- endif -%}
+      {%- comment -%}
+        Galerija: glavni slajder + sličice ispod + zoom preko celog ekrana.
+        Telefon: slike se menjaju prevlačenjem. Desktop: klikom (sličice, strelice).
+      {%- endcomment -%}
+      {%- liquid
+        assign images = product.media | where: 'media_type', 'image'
+        assign image_count = images.size
+      -%}
+      <div class="pdp__gallery{% if image_count > 1 %} has-slider{% endif %}" data-gallery>
+        <div class="pdp__slider">
+          <ul class="pdp__slides" role="list" data-slides aria-label="Product images">
+            {%- for media in images -%}
+              {%- liquid
+                if forloop.first
+                  assign loading = 'eager'
+                else
+                  assign loading = 'lazy'
+                endif
+              -%}
+              <li class="pdp__slide" data-media-id="{{ media.id }}" data-index="{{ forloop.index0 }}">
+                <button type="button" class="pdp__zoom-trigger" data-zoom-open="{{ forloop.index0 }}" aria-label="Zoom image {{ forloop.index }} of {{ image_count }}">
+                  {{ media | image_url: width: 1300 | image_tag: widths: '450, 700, 1000, 1300', sizes: '(max-width: 989px) 100vw, 610px', loading: loading, class: 'pdp__main-img' }}
+                </button>
+              </li>
+            {%- else -%}
+              <li class="pdp__slide">{{ 'product-apparel-1' | placeholder_svg_tag: 'pdp__main-img' }}</li>
             {%- endfor -%}
           </ul>
+
+          {%- if image_count > 1 -%}
+            <button type="button" class="pdp__arrow pdp__arrow--prev" data-slide-prev aria-label="Previous image">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button type="button" class="pdp__arrow pdp__arrow--next" data-slide-next aria-label="Next image">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+          {%- endif -%}
+        </div>
+
+        {%- if image_count > 1 -%}
+          <ul class="pdp__thumbs" role="list">
+            {%- for media in images -%}
+              <li>
+                <button type="button" class="pdp__thumb{% if forloop.first %} is-active{% endif %}" data-thumb="{{ forloop.index0 }}" aria-label="Show image {{ forloop.index }}"{% if forloop.first %} aria-current="true"{% endif %}>
+                  {{ media | image_url: width: 320 | image_tag: widths: '160, 320', sizes: '(max-width: 989px) 33vw, 145px', loading: 'lazy', class: 'pdp__thumb-img' }}
+                </button>
+              </li>
+            {%- endfor -%}
+          </ul>
+        {%- endif -%}
+
+        {%- comment -%} Zoom preko celog ekrana {%- endcomment -%}
+        {%- if image_count > 0 -%}
+          <dialog class="pdp__lightbox" data-lightbox aria-label="Image zoom">
+            <ul class="pdp__lb-slides" role="list" data-lb-slides>
+              {%- for media in images -%}
+                <li class="pdp__lb-slide">
+                  <div class="pdp__lb-frame" data-zoom-frame>
+                    {{ media | image_url: width: 2400 | image_tag: widths: '1000, 1600, 2400', sizes: '100vw', loading: 'lazy', class: 'pdp__lb-img', draggable: 'false' }}
+                  </div>
+                </li>
+              {%- endfor -%}
+            </ul>
+            <button type="button" class="pdp__lb-close" data-lb-close aria-label="Close zoom">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            {%- if image_count > 1 -%}
+              <button type="button" class="pdp__arrow pdp__arrow--prev pdp__lb-arrow" data-lb-prev aria-label="Previous image">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <button type="button" class="pdp__arrow pdp__arrow--next pdp__lb-arrow" data-lb-next aria-label="Next image">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <p class="pdp__lb-counter" data-lb-counter aria-live="polite">1 / {{ image_count }}</p>
+            {%- endif -%}
+          </dialog>
         {%- endif -%}
       </div>
 
@@ -254,51 +297,104 @@
     align-items: start;
   }
 
-  /* ---------- Galerija ---------- */
+  /* ---------- Galerija: slajder ---------- */
   .pdp__gallery {
     display: flex;
-    flex-direction: row-reverse;
+    flex-direction: column;
     gap: 14px;
-  }
-  .pdp__main-media {
-    flex: 1;
     min-width: 0;
   }
-  .pdp__main-item {
-    display: none;
-    aspect-ratio: 444 / 530;
-    overflow: hidden;
+  .pdp__slider {
+    position: relative;
+  }
+  /* Slajdovi su u jednom redu; telefon ih prevlači, desktop ih pomera klikom (JS) */
+  .pdp__slides {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
     border-radius: 20px;
     background: #f0eeed;
+    list-style: none;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
   }
-  .pdp__main-item.is-active {
-    display: block;
+  .pdp__slides::-webkit-scrollbar {
+    display: none;
   }
-  /* Bez malih slika velika slika zauzima celu širinu, ali zadržava visinu iz dizajna */
-  .pdp__gallery:not(:has(.pdp__thumbs)) .pdp__main-item {
+  .pdp__slide {
+    flex: 0 0 100%;
     aspect-ratio: 610 / 530;
+    scroll-snap-align: start;
+  }
+  .pdp__zoom-trigger {
+    display: block;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
   }
   .pdp__main-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+
+  /* Strelice (desktop) */
+  .pdp__arrow {
+    position: absolute;
+    top: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: #000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: opacity 0.2s;
+  }
+  .pdp__arrow svg {
+    width: 20px;
+    height: 20px;
+  }
+  .pdp__arrow--prev {
+    left: 16px;
+  }
+  .pdp__arrow--next {
+    right: 16px;
+  }
+  .pdp__arrow:disabled {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Sličice ispod */
   .pdp__thumbs {
     display: flex;
-    flex-direction: column;
     gap: 14px;
-    width: 152px;
-    max-height: 530px;
     margin: 0;
     padding: 0;
-    overflow-y: auto;
+    overflow-x: auto;
     list-style: none;
     scrollbar-width: none;
+  }
+  /* Do 4 sličice popune red; sa više slika red se prevlači */
+  .pdp__thumbs li {
+    flex: 1 0 calc((100% - 3 * 14px) / 4);
+    max-width: calc((100% - 2 * 14px) / 3);
   }
   .pdp__thumb {
     display: block;
     width: 100%;
-    aspect-ratio: 152 / 167;
+    aspect-ratio: 1;
     padding: 0;
     overflow: hidden;
     border: 1px solid transparent;
@@ -313,6 +409,112 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* ---------- Zoom preko celog ekrana ---------- */
+  .pdp__lightbox {
+    width: 100vw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: #fff;
+    overflow: hidden;
+  }
+  .pdp__lightbox::backdrop {
+    background: #fff;
+  }
+  .pdp__lb-slides {
+    display: flex;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+    list-style: none;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .pdp__lb-slides::-webkit-scrollbar {
+    display: none;
+  }
+  /* Dok je slika uvećana, slajdovi se ne pomeraju (prst/miš pomera sliku) */
+  .pdp__lightbox.is-zoomed .pdp__lb-slides {
+    overflow: hidden;
+  }
+  .pdp__lb-slide {
+    flex: 0 0 100%;
+    height: 100%;
+    scroll-snap-align: start;
+  }
+  .pdp__lb-frame {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #f0eeed;
+    cursor: zoom-in;
+  }
+  .pdp__lb-frame.is-zoomed {
+    overflow: auto;
+    cursor: zoom-out;
+    scrollbar-width: none;
+  }
+  .pdp__lb-frame.is-zoomed::-webkit-scrollbar {
+    display: none;
+  }
+  /* Dok je zoom otvoren, strana iza se ne skroluje */
+  html:has(.pdp__lightbox[open]) {
+    overflow: hidden;
+  }
+  .pdp__lb-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    user-select: none;
+  }
+  .pdp__lb-frame.is-zoomed .pdp__lb-img {
+    width: 200%;
+    height: 200%;
+    max-width: none;
+  }
+  .pdp__lb-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: #000;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    cursor: pointer;
+  }
+  .pdp__lb-close svg {
+    width: 22px;
+    height: 22px;
+  }
+  .pdp__lb-arrow {
+    position: fixed;
+  }
+  .pdp__lightbox.is-zoomed .pdp__lb-arrow {
+    display: none;
+  }
+  .pdp__lb-counter {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    margin: 0;
+    padding: 6px 14px;
+    border-radius: 62px;
+    background: #fff;
+    font-size: 14px;
+    transform: translateX(-50%);
   }
 
   /* ---------- Informacije ---------- */
@@ -544,26 +746,31 @@
       gap: 20px;
     }
     .pdp__gallery {
-      flex-direction: column;
       gap: 12px;
     }
-    .pdp__main-item,
-    .pdp__gallery:not(:has(.pdp__thumbs)) .pdp__main-item {
+    /* Telefon: prevlačenje prstom */
+    .pdp__slides {
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+    }
+    .pdp__slide {
       aspect-ratio: 358 / 290;
     }
+    .pdp__slider .pdp__arrow {
+      display: none;
+    }
     .pdp__thumbs {
-      flex-direction: row;
       gap: 12px;
-      width: auto;
-      max-height: none;
-      overflow-x: auto;
-      overflow-y: visible;
     }
     .pdp__thumbs li {
       flex: 0 0 calc((100% - 24px) / 3);
+      max-width: none;
     }
     .pdp__thumb {
       aspect-ratio: 111 / 106;
+    }
+    .pdp__lb-arrow {
+      display: none;
     }
     .pdp__title {
       margin-bottom: 12px;
@@ -639,18 +846,139 @@
     const idInput = pdp.querySelector('[data-variant-id]');
     const addButton = pdp.querySelector('[data-add]');
 
-    // Galerija: klik na malu sliku menja veliku
+    // ---------- Galerija: slajder ----------
+    const gallery = pdp.querySelector('[data-gallery]');
+    const slides = gallery.querySelector('[data-slides]');
+    const slideCount = slides.children.length;
+    const prevButton = gallery.querySelector('[data-slide-prev]');
+    const nextButton = gallery.querySelector('[data-slide-next]');
+    let current = 0;
+
+    // Koji je slajd trenutno vidljiv (posle prevlačenja ili klika)
+    const markActive = (index) => {
+      current = index;
+      gallery.querySelectorAll('[data-thumb]').forEach((thumb) => {
+        const active = Number(thumb.dataset.thumb) === index;
+        thumb.classList.toggle('is-active', active);
+        if (active) {
+          thumb.setAttribute('aria-current', 'true');
+          thumb.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+        } else {
+          thumb.removeAttribute('aria-current');
+        }
+      });
+      if (prevButton) prevButton.disabled = index === 0;
+      if (nextButton) nextButton.disabled = index === slideCount - 1;
+    };
+
+    const goTo = (index, smooth = true) => {
+      const target = Math.max(0, Math.min(slideCount - 1, index));
+      slides.scrollTo({ left: target * slides.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
+      markActive(target);
+    };
+
+    // Telefon: posle prevlačenja prstom ažuriraj sličice
+    let scrollTimer;
+    slides.addEventListener('scroll', () => {
+      clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        const index = Math.round(slides.scrollLeft / slides.clientWidth);
+        if (index !== current) markActive(index);
+      }, 80);
+    });
+
+    // Desktop: klik na sličice i strelice
+    gallery.querySelectorAll('[data-thumb]').forEach((thumb) =>
+      thumb.addEventListener('click', () => goTo(Number(thumb.dataset.thumb)))
+    );
+    prevButton?.addEventListener('click', () => goTo(current - 1));
+    nextButton?.addEventListener('click', () => goTo(current + 1));
+    window.addEventListener('resize', () => goTo(current, false));
+    markActive(0);
+
+    // Varijanta sa svojom slikom: prebaci slajder na nju
     const showMedia = (mediaId) => {
       if (!mediaId) return;
-      const item = pdp.querySelector(`.pdp__main-item[data-media-id="${mediaId}"]`);
-      if (!item) return;
-      pdp.querySelectorAll('.pdp__main-item, .pdp__thumb').forEach((el) => el.classList.remove('is-active'));
-      item.classList.add('is-active');
-      pdp.querySelector(`[data-thumb="${mediaId}"]`)?.classList.add('is-active');
+      const slide = slides.querySelector(`[data-media-id="${mediaId}"]`);
+      if (slide) goTo(Number(slide.dataset.index));
     };
-    pdp.querySelectorAll('[data-thumb]').forEach((thumb) => {
-      thumb.addEventListener('click', () => showMedia(thumb.dataset.thumb));
-    });
+
+    // ---------- Zoom preko celog ekrana ----------
+    const lightbox = gallery.querySelector('[data-lightbox]');
+    if (lightbox) {
+      const lbSlides = lightbox.querySelector('[data-lb-slides]');
+      const counter = lightbox.querySelector('[data-lb-counter]');
+      let lbCurrent = 0;
+
+      const resetZoom = () => {
+        lightbox.classList.remove('is-zoomed');
+        lightbox.querySelectorAll('[data-zoom-frame]').forEach((frame) => frame.classList.remove('is-zoomed'));
+      };
+      const lbGoTo = (index, smooth = true) => {
+        resetZoom();
+        lbCurrent = Math.max(0, Math.min(slideCount - 1, index));
+        lbSlides.scrollTo({ left: lbCurrent * lbSlides.clientWidth, behavior: smooth ? 'smooth' : 'auto' });
+        if (counter) counter.textContent = `${lbCurrent + 1} / ${slideCount}`;
+      };
+
+      // Klik na glavnu sliku otvara zoom na toj slici
+      gallery.querySelectorAll('[data-zoom-open]').forEach((trigger) =>
+        trigger.addEventListener('click', () => {
+          lightbox.showModal();
+          lbGoTo(Number(trigger.dataset.zoomOpen), false);
+        })
+      );
+
+      // Telefon: prevlačenje u zoomu
+      let lbTimer;
+      lbSlides.addEventListener('scroll', () => {
+        if (lightbox.classList.contains('is-zoomed')) return;
+        clearTimeout(lbTimer);
+        lbTimer = setTimeout(() => {
+          lbCurrent = Math.round(lbSlides.scrollLeft / lbSlides.clientWidth);
+          if (counter) counter.textContent = `${lbCurrent + 1} / ${slideCount}`;
+        }, 80);
+      });
+
+      // Desktop: strelice i tasteri ← →
+      lightbox.querySelector('[data-lb-prev]')?.addEventListener('click', () => lbGoTo(lbCurrent - 1));
+      lightbox.querySelector('[data-lb-next]')?.addEventListener('click', () => lbGoTo(lbCurrent + 1));
+      lightbox.addEventListener('keydown', (event) => {
+        if (lightbox.classList.contains('is-zoomed')) return;
+        if (event.key === 'ArrowLeft') lbGoTo(lbCurrent - 1);
+        if (event.key === 'ArrowRight') lbGoTo(lbCurrent + 1);
+      });
+
+      lightbox.querySelector('[data-lb-close]').addEventListener('click', () => lightbox.close());
+      // Kad se zoom zatvori, glavni slajder pokazuje poslednju gledanu sliku
+      lightbox.addEventListener('close', () => {
+        resetZoom();
+        goTo(lbCurrent, false);
+      });
+
+      // Klik na sliku u zoomu: uvećaj 2× na mestu klika / vrati
+      lightbox.querySelectorAll('[data-zoom-frame]').forEach((frame) => {
+        frame.addEventListener('click', (event) => {
+          const zoomIn = !frame.classList.contains('is-zoomed');
+          frame.classList.toggle('is-zoomed', zoomIn);
+          lightbox.classList.toggle('is-zoomed', zoomIn);
+          if (zoomIn) {
+            const rect = frame.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width;
+            const y = (event.clientY - rect.top) / rect.height;
+            frame.scrollLeft = x * frame.scrollWidth - rect.width / 2;
+            frame.scrollTop = y * frame.scrollHeight - rect.height / 2;
+          }
+        });
+        // Desktop: pomeranje miša pomera uvećanu sliku (telefon pomera prstom)
+        frame.addEventListener('mousemove', (event) => {
+          if (!frame.classList.contains('is-zoomed')) return;
+          const rect = frame.getBoundingClientRect();
+          frame.scrollLeft = ((event.clientX - rect.left) / rect.width) * (frame.scrollWidth - rect.width);
+          frame.scrollTop = ((event.clientY - rect.top) / rect.height) * (frame.scrollHeight - rect.height);
+        });
+      });
+    }
 
     // Količina: dugmad - i +
     const qtyInput = pdp.querySelector('.pdp__qty-input');
