@@ -83,7 +83,8 @@
 
       <a href="{{ routes.cart_url }}" class="header-icon" aria-label="Korpa">
         <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 3h2.4l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h9.3a1.5 1.5 0 0 0 1.5-1.1L21 7H5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.5" fill="currentColor"/><circle cx="17.5" cy="20" r="1.5" fill="currentColor"/></svg>
-        {%- if cart.item_count > 0 -%}<span class="header-cart-count">{{ cart.item_count }}</span>{%- endif -%}
+        {%- comment -%} Uvek postoji (sakriven kad je 0), da bi ga korpa osvežila bez osvežavanja strane {%- endcomment -%}
+        <span class="header-cart-count" data-cart-count{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</span>
       </a>
 
       <a href="{{ routes.account_url }}" class="header-icon" aria-label="Nalog">
