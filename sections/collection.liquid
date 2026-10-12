@@ -17,7 +17,7 @@
   <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 10L8 5.5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 {%- endcapture -%}
 
-<div class="plp full-width" data-plp>
+<div class="plp full-width" data-plp data-section-id="{{ section.id }}">
   <div class="plp__inner">
 
     <nav class="plp__breadcrumbs" aria-label="Putanja">
@@ -770,6 +770,14 @@
     display: none;
   }
 
+  /* Dok se učitavaju novi rezultati */
+  .plp[aria-busy='true'] .plp__main,
+  .plp[aria-busy='true'] .plp__filters {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+
   /* ---------- MOBILNI ---------- */
   @media (max-width: 989px) {
     .plp__inner {
@@ -876,54 +884,104 @@
 {% endstylesheet %}
 
 {% javascript %}
-  document.querySelectorAll('[data-plp]').forEach((plp) => {
-    // Mobilni: otvaranje i zatvaranje filtera
-    plp.querySelectorAll('[data-plp-open]').forEach((button) =>
-      button.addEventListener('click', () => plp.classList.add('is-filters-open'))
-    );
-    plp.querySelectorAll('[data-plp-close]').forEach((button) =>
-      button.addEventListener('click', () => plp.classList.remove('is-filters-open'))
-    );
+  // Slušamo na nivou dokumenta, jer se HTML strane menja posle svakog filtera (Section Rendering API)
 
-    // Sortiranje: menja ?sort_by= u adresi i zadržava filtere
-    plp.querySelector('[data-plp-sort]')?.addEventListener('change', (event) => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('sort_by', event.target.value);
-      url.searchParams.delete('page');
-      window.location.href = url.toString();
-    });
+  // Učitaj novu verziju sekcije za datu adresu i zameni staru, bez osvežavanja strane
+  const plpRender = async (plp, url, { push = true, scroll = false } = {}) => {
+    const sectionId = plp.dataset.sectionId;
+    const fetchUrl = new URL(url, window.location.origin);
+    fetchUrl.searchParams.set('section_id', sectionId);
 
-    // Cena: dva klizača ne smeju da se preklope, natpisi i linija prate vrednosti
-    plp.querySelectorAll('[data-price-range]').forEach((range) => {
+    plp.setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch(fetchUrl);
+      if (!response.ok) throw new Error(response.status);
+      const html = new DOMParser().parseFromString(await response.text(), 'text/html');
+      const fresh = html.querySelector('[data-plp]');
+      if (!fresh) throw new Error('no section');
+
+      plp.replaceWith(fresh);
+      if (push) window.history.pushState({ plp: true }, '', url);
+      if (scroll) fresh.querySelector('.plp__main')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      // Ako nešto ne uspe, otvori adresu na stari način (sa osvežavanjem)
+      window.location.href = url;
+    }
+  };
+
+  // Adresa iz forme filtera (+ trenutno sortiranje)
+  const plpFormUrl = (form) => {
+    const params = new URLSearchParams();
+    for (const [name, value] of new FormData(form)) params.append(name, value);
+
+    // Cena se ne šalje ako klizači nisu pomereni (da adresa ostane čista)
+    form.querySelectorAll('[data-price-range]').forEach((range) => {
       const min = range.querySelector('[data-price-min]');
       const max = range.querySelector('[data-price-max]');
-      const minLabel = range.querySelector('[data-price-min-label]');
-      const maxLabel = range.querySelector('[data-price-max-label]');
-      const symbol = minLabel.textContent.replace(/[\d.,\s]/g, '');
-
-      const update = (changed) => {
-        if (Number(min.value) > Number(max.value)) {
-          if (changed === min) min.value = max.value;
-          else max.value = min.value;
-        }
-        range.style.setProperty('--min', min.value);
-        range.style.setProperty('--max', max.value);
-        minLabel.textContent = symbol + min.value;
-        maxLabel.textContent = symbol + max.value;
-      };
-      min.addEventListener('input', () => update(min));
-      max.addEventListener('input', () => update(max));
+      if (Number(min.value) === 0) params.delete(min.name);
+      if (Number(max.value) === Number(max.max)) params.delete(max.name);
     });
 
-    // Ne šalji filter cene ako nije pomeren (da adresa ostane čista)
-    plp.querySelector('.plp__filter-form')?.addEventListener('submit', (event) => {
-      event.target.querySelectorAll('[data-price-range]').forEach((range) => {
-        const min = range.querySelector('[data-price-min]');
-        const max = range.querySelector('[data-price-max]');
-        if (Number(min.value) === 0) min.disabled = true;
-        if (Number(max.value) === Number(max.max)) max.disabled = true;
-      });
-    });
+    const query = params.toString();
+    return form.getAttribute('action') + (query ? `?${query}` : '');
+  };
+
+  // Apply Filter
+  document.addEventListener('submit', (event) => {
+    const form = event.target.closest('.plp__filter-form');
+    if (!form) return;
+    event.preventDefault();
+    plpRender(form.closest('[data-plp]'), plpFormUrl(form), { scroll: true });
+  });
+
+  // Sortiranje
+  document.addEventListener('change', (event) => {
+    const select = event.target.closest('[data-plp-sort]');
+    if (!select) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('sort_by', select.value);
+    url.searchParams.delete('page');
+    plpRender(select.closest('[data-plp]'), url.pathname + url.search);
+  });
+
+  // Klikovi: stranice, Clear all, otvaranje/zatvaranje filtera na mobilnom
+  document.addEventListener('click', (event) => {
+    const link = event.target.closest('.plp__pagination a, .plp__clear');
+    if (link && !event.metaKey && !event.ctrlKey) {
+      event.preventDefault();
+      plpRender(link.closest('[data-plp]'), link.getAttribute('href'), { scroll: true });
+      return;
+    }
+    const open = event.target.closest('[data-plp-open]');
+    if (open) open.closest('[data-plp]').classList.add('is-filters-open');
+    const close = event.target.closest('[data-plp-close]');
+    if (close) close.closest('[data-plp]').classList.remove('is-filters-open');
+  });
+
+  // Cena: dva klizača ne smeju da se preklope, natpisi i linija prate vrednosti
+  document.addEventListener('input', (event) => {
+    const range = event.target.closest('[data-price-range]');
+    if (!range) return;
+    const min = range.querySelector('[data-price-min]');
+    const max = range.querySelector('[data-price-max]');
+    const minLabel = range.querySelector('[data-price-min-label]');
+    const maxLabel = range.querySelector('[data-price-max-label]');
+    const symbol = minLabel.textContent.replace(/[\d.,\s]/g, '');
+
+    if (Number(min.value) > Number(max.value)) {
+      if (event.target === min) min.value = max.value;
+      else max.value = min.value;
+    }
+    range.style.setProperty('--min', min.value);
+    range.style.setProperty('--max', max.value);
+    minLabel.textContent = symbol + min.value;
+    maxLabel.textContent = symbol + max.value;
+  });
+
+  // Dugme Nazad / Napred u browseru: prikaži filtere iz te adrese
+  window.addEventListener('popstate', () => {
+    const plp = document.querySelector('[data-plp]');
+    if (plp) plpRender(plp, window.location.pathname + window.location.search, { push: false });
   });
 {% endjavascript %}
 
