@@ -654,6 +654,19 @@
     color: rgba(0, 0, 0, 0.6);
     text-align: center;
   }
+  /* Desktop: filteri se primenjuju odmah, pa dugme Apply ne treba */
+  @media (min-width: 990px) {
+    .plp__apply {
+      display: none;
+    }
+    .plp__clear {
+      margin-top: 24px;
+    }
+  }
+  /* Telefon: dok su filteri otvoreni, strana ispod se ne skroluje */
+  html:has(.plp.is-filters-open) {
+    overflow: hidden;
+  }
 
   /* ---------- Naslov, broj, sortiranje ---------- */
   .plp__head {
@@ -791,19 +804,44 @@
       grid-template-columns: 1fr;
     }
 
-    /* Filteri kao panel koji izlazi odozdo */
+    /* Filteri preko celog ekrana; Apply Filter je uvek vidljiv na dnu */
     .plp__filters {
       position: fixed;
-      inset: auto 0 0 0;
+      inset: 0;
       z-index: 50;
-      max-height: 85vh;
+      padding: 0;
       overflow-y: auto;
-      border-radius: 20px 20px 0 0;
+      border: 0;
+      border-radius: 0;
       transform: translateY(100%);
       transition: transform 0.3s ease;
+      overscroll-behavior: contain;
     }
     .plp.is-filters-open .plp__filters {
       transform: none;
+    }
+    .plp__filter-form {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      padding: 20px 20px 0;
+    }
+    .plp__filters-head {
+      position: sticky;
+      top: -20px;
+      z-index: 1;
+      margin-top: -20px;
+      padding-top: 20px;
+      background: #fff;
+    }
+    .plp__apply {
+      position: sticky;
+      bottom: 0;
+      margin-top: auto;
+      box-shadow: 0 -16px 16px #fff;
+    }
+    .plp__clear {
+      padding-bottom: 20px;
     }
     .plp__overlay {
       position: fixed;
@@ -932,6 +970,24 @@
     if (!form) return;
     event.preventDefault();
     plpRender(form.closest('[data-plp]'), plpFormUrl(form), { scroll: true });
+  });
+
+  // Desktop: svaki filter se primenjuje odmah (telefon čeka Apply Filter)
+  const plpDesktop = window.matchMedia('(min-width: 990px)');
+  let plpTimer;
+  document.addEventListener('change', (event) => {
+    const form = event.target.closest('.plp__filter-form');
+    if (!form || !plpDesktop.matches) return;
+    // Posle zamene sekcije vrati fokus na isti filter (za tastaturu)
+    const { name, value, type } = event.target;
+    const focusSelector = type === 'checkbox'
+      ? `.plp__filter-form [name="${CSS.escape(name)}"][value="${CSS.escape(value)}"]`
+      : `.plp__filter-form [name="${CSS.escape(name)}"]`;
+    clearTimeout(plpTimer);
+    plpTimer = setTimeout(async () => {
+      await plpRender(form.closest('[data-plp]'), plpFormUrl(form));
+      document.querySelector(focusSelector)?.focus({ preventScroll: true });
+    }, 250);
   });
 
   // Sortiranje
