@@ -1,0 +1,531 @@
+{%- if section.blocks.size > 0 -%}
+{%- liquid
+  assign s = section.settings
+  assign slide_count = section.blocks.size
+
+  assign is_slider = false
+  if slide_count > 1
+    assign is_slider = true
+  endif
+
+  # Odnos stranica za "Adapt to image" uzimamo sa prvog slajda
+  assign first = section.blocks.first.settings
+  assign first_desktop = first.image_desktop | default: first.image_mobile
+  assign first_mobile = first.image_mobile | default: first.image_desktop
+  assign ratio_desktop = 2.25
+  assign ratio_mobile = 0.8
+  if first_desktop != blank
+    assign ratio_desktop = first_desktop.aspect_ratio
+  endif
+  if first_mobile != blank
+    assign ratio_mobile = first_mobile.aspect_ratio
+  endif
+
+  assign overlay_alpha = s.overlay_opacity | divided_by: 100.0
+  assign overlay = 'transparent'
+  if s.overlay_color != blank
+    assign overlay = s.overlay_color | color_modify: 'alpha', overlay_alpha
+  endif
+
+  assign tag = 'div'
+  if is_slider
+    assign tag = 'hero-slider'
+  endif
+
+  assign mobile_widths = '375, 550, 750, 1100, 1500' | split: ', '
+-%}
+
+{{ 'hero-slider.css' | asset_url | stylesheet_tag }}
+{%- if is_slider -%}
+  <script src="{{ 'hero-slider.js' | asset_url }}" defer></script>
+{%- endif -%}
+
+<{{ tag }}
+  class="hero-slider full-width{% if s.height_desktop != blank %} hero-slider--height-desktop{% endif %}{% if s.height_mobile != blank %} hero-slider--height-mobile{% endif %}{% if is_slider %} hero-slider--multiple{% endif %}"
+  {% if is_slider %}
+    role="region"
+    aria-roledescription="carousel"
+    aria-label="{{ s.accessibility_label | default: 'Hero slideshow' | escape }}"
+    data-section-id="{{ section.id }}"
+    data-autoplay="{{ s.autoplay }}"
+  {% endif %}
+  style="
+    --hs-ratio-d: {{ ratio_desktop }};
+    --hs-ratio-m: {{ ratio_mobile }};
+    --hs-height-d: {{ s.height_desktop | default: 0 }}px;
+    --hs-height-m: {{ s.height_mobile | default: 0 }}px;
+    --hs-text: {{ s.text_color }};
+    --hs-overlay: {{ overlay }};
+    --hs-btn-radius: {{ s.button_radius }}px;
+    --hs-h-d: {{ s.headline_size }}px;
+    --hs-h-m: {{ s.headline_size_mobile }}px;
+    --hs-sub-d: {{ s.subheadline_size }}px;
+    --hs-sub-m: {{ s.subheadline_size_mobile }}px;
+    --hs-duration: {{ s.autoplay_speed }}s;
+  "
+>
+  <div
+    class="hero-slider__track"
+    id="HeroSliderTrack-{{ section.id }}"
+    {% if is_slider %}
+      data-track
+      aria-live="polite"
+    {% endif %}
+  >
+    {%- for block in section.blocks -%}
+      {%- liquid
+        assign b = block.settings
+        assign img_desktop = b.image_desktop | default: b.image_mobile
+        assign img_mobile = b.image_mobile
+        assign heading_id = 'HeroSlideHeading-' | append: section.id | append: '-' | append: forloop.index
+
+        assign loading = 'lazy'
+        assign priority = 'auto'
+        if forloop.first
+          assign loading = 'eager'
+          assign priority = 'high'
+        endif
+      -%}
+
+      <div
+        class="hero-slider__slide{% if b.link != blank %} hero-slider__slide--linked{% endif %}"
+        id="HeroSlide-{{ section.id }}-{{ forloop.index }}"
+        {% if is_slider %}
+          role="group"
+          aria-roledescription="slide"
+          aria-label="{{ forloop.index }} of {{ slide_count }}"
+          tabindex="-1"
+          data-slide
+        {% endif %}
+        style="
+          --hs-x-d: {{ b.content_x }};
+          --hs-y-d: {{ b.content_y }};
+          --hs-align-d: {{ b.text_align }};
+          --hs-x-m: {{ b.content_x_mobile }};
+          --hs-y-m: {{ b.content_y_mobile }};
+          --hs-align-m: {{ b.text_align_mobile }};
+          --hs-btn-bg: {{ b.button_bg }};
+          --hs-btn-text: {{ b.button_text_color }};
+        "
+        {{ block.shopify_attributes }}
+      >
+        {%- if img_desktop != blank -%}
+          <picture class="hero-slider__picture">
+            {%- if img_mobile != blank and b.image_desktop != blank -%}
+              {%- liquid
+                assign srcset = ''
+                for w in mobile_widths
+                  assign wn = w | plus: 0
+                  if wn <= img_mobile.width
+                    assign entry = img_mobile | image_url: width: wn | append: ' ' | append: wn | append: 'w'
+                    if srcset != ''
+                      assign srcset = srcset | append: ', '
+                    endif
+                    assign srcset = srcset | append: entry
+                  endif
+                endfor
+                if srcset == ''
+                  assign srcset = img_mobile | image_url: width: img_mobile.width | append: ' ' | append: img_mobile.width | append: 'w'
+                endif
+              -%}
+              <source
+                media="(max-width: 749px)"
+                srcset="{{ srcset }}"
+                sizes="100vw"
+                width="{{ img_mobile.width }}"
+                height="{{ img_mobile.height }}"
+              >
+            {%- endif -%}
+            {{
+              img_desktop
+              | image_url: width: 3840
+              | image_tag:
+                widths: '750, 1100, 1500, 1780, 2000, 2500, 3000, 3840',
+                sizes: '100vw',
+                loading: loading,
+                fetchpriority: priority,
+                alt: img_desktop.alt,
+                class: 'hero-slider__media'
+            }}
+          </picture>
+        {%- else -%}
+          {%- assign placeholder_index = forloop.index0 | modulo: 2 | plus: 1 -%}
+          {{ 'hero-apparel-' | append: placeholder_index | placeholder_svg_tag: 'hero-slider__media hero-slider__placeholder' }}
+        {%- endif -%}
+
+        <div class="hero-slider__overlay" aria-hidden="true"></div>
+
+        {%- if b.link != blank -%}
+          <a
+            class="hero-slider__link"
+            href="{{ b.link }}"
+            {% if b.headline != blank %}
+              aria-labelledby="{{ heading_id }}"
+            {% elsif b.button_label != blank %}
+              aria-label="{{ b.button_label | escape }}"
+            {% else %}
+              aria-label="Slide {{ forloop.index }}"
+            {% endif %}
+          ></a>
+        {%- endif -%}
+
+        {%- if b.headline != blank or b.subheadline != blank or b.button_label != blank -%}
+          <div class="hero-slider__content">
+            <div class="hero-slider__content-inner">
+              {%- if b.headline != blank -%}
+                <h1 class="hero-slider__headline" id="{{ heading_id }}">
+                  {{- b.headline | escape -}}
+                </h1>
+              {%- endif -%}
+
+              {%- if b.subheadline != blank -%}
+                <p class="hero-slider__subheadline">{{ b.subheadline | escape | newline_to_br }}</p>
+              {%- endif -%}
+
+              {%- if b.button_label != blank -%}
+                {%- comment -%} Samo izgled dugmeta - klik bilo gde na slajdu ide na link slajda {%- endcomment -%}
+                <span class="hero-slider__button"{% if b.link != blank %} aria-hidden="true"{% endif %}>
+                  {{- b.button_label | escape -}}
+                </span>
+              {%- endif -%}
+            </div>
+          </div>
+        {%- endif -%}
+      </div>
+    {%- endfor -%}
+  </div>
+
+  {%- if is_slider -%}
+    <button
+      type="button"
+      class="hero-slider__arrow hero-slider__arrow--prev"
+      aria-label="Previous slide"
+      aria-controls="HeroSliderTrack-{{ section.id }}"
+      data-prev
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button
+      type="button"
+      class="hero-slider__arrow hero-slider__arrow--next"
+      aria-label="Next slide"
+      aria-controls="HeroSliderTrack-{{ section.id }}"
+      data-next
+    >
+      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+
+    <div class="hero-slider__controls">
+      <ul class="hero-slider__pills" role="list">
+        {%- for block in section.blocks -%}
+          <li>
+            <button
+              type="button"
+              class="hero-slider__pill"
+              aria-label="Go to slide {{ forloop.index }}"
+              aria-controls="HeroSlide-{{ section.id }}-{{ forloop.index }}"
+              {% if forloop.first %}
+                aria-current="true"
+              {% endif %}
+              data-pill
+            >
+              <span class="hero-slider__pill-bar"><span class="hero-slider__pill-fill"></span></span>
+            </button>
+          </li>
+        {%- endfor -%}
+      </ul>
+    </div>
+  {%- endif -%}
+</{{ tag }}>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Hero slider",
+  "tag": "section",
+  "class": "hero-slider-section",
+  "max_blocks": 50,
+  "settings": [
+    {
+      "type": "header",
+      "content": "Height"
+    },
+    {
+      "type": "number",
+      "id": "height_desktop",
+      "label": "Desktop height (px)",
+      "info": "Leave empty to use the height of the first image."
+    },
+    {
+      "type": "number",
+      "id": "height_mobile",
+      "label": "Mobile height (px)",
+      "info": "Leave empty to use the height of the first image."
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#ffffff"
+    },
+    {
+      "type": "color",
+      "id": "overlay_color",
+      "label": "Image overlay",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "overlay_opacity",
+      "label": "Overlay opacity",
+      "min": 0,
+      "max": 90,
+      "step": 5,
+      "unit": "%",
+      "default": 30
+    },
+    {
+      "type": "range",
+      "id": "button_radius",
+      "label": "Button corner radius",
+      "min": 0,
+      "max": 40,
+      "step": 2,
+      "unit": "px",
+      "default": 4
+    },
+    {
+      "type": "header",
+      "content": "Typography"
+    },
+    {
+      "type": "range",
+      "id": "headline_size",
+      "label": "Desktop headline size",
+      "min": 24,
+      "max": 96,
+      "step": 2,
+      "unit": "px",
+      "default": 56
+    },
+    {
+      "type": "range",
+      "id": "headline_size_mobile",
+      "label": "Mobile headline size",
+      "min": 20,
+      "max": 56,
+      "step": 2,
+      "unit": "px",
+      "default": 32
+    },
+    {
+      "type": "range",
+      "id": "subheadline_size",
+      "label": "Desktop subheadline size",
+      "min": 14,
+      "max": 28,
+      "step": 1,
+      "unit": "px",
+      "default": 18
+    },
+    {
+      "type": "range",
+      "id": "subheadline_size_mobile",
+      "label": "Mobile subheadline size",
+      "min": 12,
+      "max": 22,
+      "step": 1,
+      "unit": "px",
+      "default": 16
+    },
+    {
+      "type": "header",
+      "content": "Slideshow"
+    },
+    {
+      "type": "checkbox",
+      "id": "autoplay",
+      "label": "Autoplay",
+      "default": false
+    },
+    {
+      "type": "range",
+      "id": "autoplay_speed",
+      "label": "Change slides every",
+      "min": 3,
+      "max": 10,
+      "step": 1,
+      "unit": "s",
+      "default": 5
+    },
+    {
+      "type": "text",
+      "id": "accessibility_label",
+      "label": "Slideshow description",
+      "info": "Read by screen readers.",
+      "default": "Hero slideshow"
+    }
+  ],
+  "blocks": [
+    {
+      "type": "slide",
+      "name": "Slide",
+      "settings": [
+        {
+          "type": "header",
+          "content": "Images"
+        },
+        {
+          "type": "image_picker",
+          "id": "image_desktop",
+          "label": "Desktop image",
+          "info": "Recommended: 2880 × 1280 px"
+        },
+        {
+          "type": "image_picker",
+          "id": "image_mobile",
+          "label": "Mobile image",
+          "info": "Optional. Uses the desktop image if empty. Recommended: 1500 × 1875 px"
+        },
+        {
+          "type": "header",
+          "content": "Text"
+        },
+        {
+          "type": "text",
+          "id": "headline",
+          "label": "Headline",
+          "default": "Headline"
+        },
+        {
+          "type": "textarea",
+          "id": "subheadline",
+          "label": "Subheadline"
+        },
+        {
+          "type": "header",
+          "content": "Desktop text position"
+        },
+        {
+          "type": "select",
+          "id": "content_x",
+          "label": "Horizontal position",
+          "options": [
+            { "value": "start", "label": "Start" },
+            { "value": "center", "label": "Center" },
+            { "value": "end", "label": "End" }
+          ],
+          "default": "start"
+        },
+        {
+          "type": "select",
+          "id": "content_y",
+          "label": "Vertical position",
+          "options": [
+            { "value": "start", "label": "Start" },
+            { "value": "center", "label": "Center" },
+            { "value": "end", "label": "End" }
+          ],
+          "default": "center"
+        },
+        {
+          "type": "text_alignment",
+          "id": "text_align",
+          "label": "Text alignment",
+          "default": "left"
+        },
+        {
+          "type": "header",
+          "content": "Mobile text position"
+        },
+        {
+          "type": "select",
+          "id": "content_x_mobile",
+          "label": "Horizontal position",
+          "options": [
+            { "value": "start", "label": "Start" },
+            { "value": "center", "label": "Center" },
+            { "value": "end", "label": "End" }
+          ],
+          "default": "center"
+        },
+        {
+          "type": "select",
+          "id": "content_y_mobile",
+          "label": "Vertical position",
+          "options": [
+            { "value": "start", "label": "Start" },
+            { "value": "center", "label": "Center" },
+            { "value": "end", "label": "End" }
+          ],
+          "default": "end"
+        },
+        {
+          "type": "text_alignment",
+          "id": "text_align_mobile",
+          "label": "Text alignment",
+          "default": "center"
+        },
+        {
+          "type": "header",
+          "content": "Button"
+        },
+        {
+          "type": "text",
+          "id": "button_label",
+          "label": "Button label"
+        },
+        {
+          "type": "color",
+          "id": "button_bg",
+          "label": "Button background",
+          "default": "#ffffff"
+        },
+        {
+          "type": "color",
+          "id": "button_text_color",
+          "label": "Button text",
+          "default": "#000000"
+        },
+        {
+          "type": "header",
+          "content": "Link"
+        },
+        {
+          "type": "url",
+          "id": "link",
+          "label": "Page link",
+          "info": "Clicking anywhere on the slide opens this page."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Hero slider",
+      "blocks": [
+        {
+          "type": "slide",
+          "settings": {
+            "headline": "New season arrivals",
+            "subheadline": "Discover pieces made to last.",
+            "button_label": "Shop now"
+          }
+        },
+        {
+          "type": "slide",
+          "settings": {
+            "headline": "Everyday essentials",
+            "subheadline": "Simple, comfortable and ready for anything.",
+            "button_label": "Explore"
+          }
+        }
+      ]
+    }
+  ]
+}
+{% endschema %}
