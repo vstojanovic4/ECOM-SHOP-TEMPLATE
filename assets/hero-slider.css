@@ -6,7 +6,7 @@
   font-family: var(--typeBasePrimary, var(--font-primary--family, inherit));
 }
 
-/* Track: scroll-snap (swipe na mobilnom, strelice ga pomeraju na desktopu) */
+/* Track: scroll-snap (swipe on mobile, arrows move it on desktop) */
 .hero-slider__track {
   position: relative;
   display: flex;
@@ -21,7 +21,7 @@
   display: none;
 }
 
-/* Prevlacenje misem na desktopu */
+/* Mouse dragging on desktop */
 .hero-slider--multiple .hero-slider__track {
   cursor: grab;
 }
@@ -53,7 +53,7 @@
   outline: none;
 }
 
-/* Visina: uneta u px, ili (ako je prazno) po odnosu stranica prve slike */
+/* Height: set in px, or (if empty) from the aspect ratio of the first image */
 @media (max-width: 749px) {
   .hero-slider__slide { aspect-ratio: var(--hs-ratio-m); }
   .hero-slider--height-mobile .hero-slider__slide { aspect-ratio: auto; height: var(--hs-height-m); }
@@ -64,7 +64,7 @@
   .hero-slider--height-desktop .hero-slider__slide { aspect-ratio: auto; height: var(--hs-height-d); }
 }
 
-/* Slika */
+/* Image */
 .hero-slider__picture,
 .hero-slider__media {
   position: absolute;
@@ -91,7 +91,7 @@
   pointer-events: none;
 }
 
-/* Stretched link: pokriva ceo slajd, dugme ide iznad njega */
+/* Stretched link: covers the whole slide, the button sits above it */
 .hero-slider__link {
   position: absolute;
   inset: 0;
@@ -104,7 +104,7 @@
   box-shadow: inset 0 0 0 9px #000;
 }
 
-/* Tekst */
+/* Text */
 .hero-slider__content {
   position: absolute;
   inset: 0;
@@ -187,7 +187,7 @@
   }
 }
 
-/* Fokus: beli + crni prsten, vidi se na svakoj slici */
+/* Focus: white + black ring, visible on any image */
 .hero-slider__arrow:focus-visible,
 .hero-slider__pill:focus-visible {
   outline: 2px solid #fff;
@@ -195,7 +195,7 @@
   box-shadow: 0 0 0 6px #000;
 }
 
-/* Strelice (samo desktop) */
+/* Arrows (desktop only) */
 .hero-slider__arrow {
   display: none;
 }
@@ -229,7 +229,7 @@
   .hero-slider__arrow--next { right: 1.5rem; }
 }
 
-/* Bar na dnu: pilule + brojac */
+/* Bottom bar: pills */
 .hero-slider__controls {
   position: absolute;
   bottom: 1rem;
@@ -301,7 +301,7 @@
   transform: scaleX(1);
 }
 
-/* Autoplay: aktivna pilula se puni; JS prelazi na sledeci slajd na animationend */
+/* Autoplay: the active pill fills up; JS moves to the next slide on animationend */
 .hero-slider.is-autoplay .hero-slider__pill[aria-current='true'] .hero-slider__pill-fill {
   animation: hero-slider-progress var(--hs-duration) linear forwards;
 }

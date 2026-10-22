@@ -21,7 +21,7 @@ if (!customElements.get('hero-slider')) {
       this.addEventListener('keydown', (event) => this.onKeydown(event), options);
       this.setupDrag(options);
 
-      // Aktivni slajd pratimo preko IntersectionObserver-a (radi i za swipe)
+      // Track the active slide with IntersectionObserver (also works for swipe)
       this.observer = new IntersectionObserver((entries) => this.onIntersect(entries), {
         root: this.track,
         threshold: 0.6,
@@ -30,7 +30,7 @@ if (!customElements.get('hero-slider')) {
 
       if (this.autoplay) this.setupAutoplay(options);
 
-      // Theme editor: izabran blok -> idi na taj slajd i pauziraj
+      // Theme editor: selected block -> go to that slide and pause
       document.addEventListener('shopify:block:select', (event) => {
         if (event.detail.sectionId !== this.dataset.sectionId) return;
         const i = this.slides.indexOf(event.target);
@@ -53,7 +53,7 @@ if (!customElements.get('hero-slider')) {
       clearTimeout(this.snapTimer);
     }
 
-    // Prevlacenje misem (touch vec radi preko scroll-snap-a)
+    // Mouse dragging (touch already works via scroll-snap)
     setupDrag(options) {
       const threshold = 50;
       let startX = 0;
@@ -102,13 +102,13 @@ if (!customElements.get('hero-slider')) {
 
         this.go(target);
         this.resume('drag');
-        // Snap ukljucujemo tek kad se skrol zavrsi, da ne "skoci"
+        // Re-enable snap only after scrolling ends, to avoid a jump
         this.snapTimer = setTimeout(() => this.track.classList.remove('is-dragging'), 700);
       };
       this.track.addEventListener('pointerup', end, options);
       this.track.addEventListener('pointercancel', end, options);
 
-      // Posle prevlacenja klik ne otvara link
+      // A click after dragging does not open the link
       this.track.addEventListener('click', (event) => {
         if (!moved) return;
         event.preventDefault();
@@ -124,7 +124,7 @@ if (!customElements.get('hero-slider')) {
       this.addEventListener('mouseenter', () => this.pause('hover'), options);
       this.addEventListener('mouseleave', () => this.resume('hover'), options);
 
-      // Pauza samo na fokus sa tastature (ne na klik misem)
+      // Pause only on keyboard focus (not on mouse click)
       this.addEventListener('focusin', (event) => {
         if (event.target.matches(':focus-visible')) this.pause('focus');
       }, options);
@@ -142,7 +142,7 @@ if (!customElements.get('hero-slider')) {
         else this.resume('motion');
       }, options);
 
-      // Kraj animacije punjenja pilule = sledeci slajd
+      // End of the pill fill animation = next slide
       this.addEventListener('animationend', (event) => {
         if (event.animationName === 'hero-slider-progress') this.go(this.index + 1);
       }, options);
@@ -164,7 +164,7 @@ if (!customElements.get('hero-slider')) {
       if (!this.autoplay) return;
       const paused = this.pauseReasons.size > 0;
       this.classList.toggle('is-paused', paused);
-      // Dok se slajdovi sami menjaju, citac ekrana ne najavljuje svaku promenu
+      // While slides change automatically, screen readers do not announce every change
       this.track.setAttribute('aria-live', paused ? 'polite' : 'off');
     }
 
@@ -174,7 +174,7 @@ if (!customElements.get('hero-slider')) {
       const changed = next !== this.index;
       const hadFocus = changed && this.slides[this.index].contains(document.activeElement);
 
-      // Dok traje skrol, observer ignorise slajdove "usput"
+      // While scrolling, the observer ignores slides passed along the way
       this.targetIndex = next;
       clearTimeout(this.targetTimer);
       this.targetTimer = setTimeout(() => (this.targetIndex = null), 1000);

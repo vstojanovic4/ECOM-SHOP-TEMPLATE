@@ -371,18 +371,18 @@
 
 {% schema %}
 {
-  "name": "Proizvodi (red)",
+  "name": "Product row",
   "settings": [
-    { "type": "text", "id": "heading", "label": "Naslov", "default": "New Arrivals" },
-    { "type": "checkbox", "id": "use_product_metafield", "label": "Proizvodi iz metafielda proizvoda", "default": false, "info": "Samo za stranu proizvoda: uzima kolekciju iz metafielda „You might also like“ i preskače trenutni proizvod. Ako je prazno, prikazuju se Shopify preporuke, a ako ni njih nema, sekcija se sakriva." },
-    { "type": "collection", "id": "collection", "label": "Kolekcija", "info": "Koristi se kad je checkbox iznad isključen. Dok ne izabereš kolekciju, prikazuju se primer-kartice." },
-    { "type": "range", "id": "products_count", "label": "Broj proizvoda", "min": 2, "max": 8, "step": 1, "default": 4 },
-    { "type": "text", "id": "button_label", "label": "Tekst dugmeta", "default": "View All", "info": "Ostavi prazno da sakriješ dugme." },
-    { "type": "url", "id": "button_link", "label": "Link dugmeta", "info": "Ako je prazno, vodi na izabranu kolekciju." },
-    { "type": "checkbox", "id": "show_divider", "label": "Linija ispod sekcije", "default": true }
+    { "type": "text", "id": "heading", "label": "Heading", "default": "New Arrivals" },
+    { "type": "checkbox", "id": "use_product_metafield", "label": "Products from product metafield", "default": false, "info": "Product page only: uses the collection from the “You might also like” metafield and skips the current product. If empty, Shopify recommendations are shown; if there are none, the section is hidden." },
+    { "type": "collection", "id": "collection", "label": "Collection", "info": "Used when the checkbox above is off. Until you pick a collection, sample cards are shown." },
+    { "type": "range", "id": "products_count", "label": "Number of products", "min": 2, "max": 8, "step": 1, "default": 4 },
+    { "type": "text", "id": "button_label", "label": "Button text", "default": "View All", "info": "Leave empty to hide the button." },
+    { "type": "url", "id": "button_link", "label": "Button link", "info": "If empty, links to the selected collection." },
+    { "type": "checkbox", "id": "show_divider", "label": "Divider below section", "default": true }
   ],
   "presets": [
-    { "name": "Proizvodi (red)" }
+    { "name": "Product row" }
   ]
 }
 {% endschema %}

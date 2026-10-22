@@ -227,12 +227,12 @@
 
 {% schema %}
 {
-  "name": "Tabovi proizvoda",
+  "name": "Product tabs",
   "settings": [
     {
       "type": "select",
       "id": "default_tab",
-      "label": "Tab otvoren na početku",
+      "label": "Tab open by default",
       "options": [
         { "value": "details", "label": "Product Details" },
         { "value": "reviews", "label": "Rating & Reviews" },
@@ -240,10 +240,10 @@
       ],
       "default": "reviews"
     },
-    { "type": "text", "id": "details_label", "label": "Naziv taba: detalji", "default": "Product Details" },
-    { "type": "text", "id": "reviews_label", "label": "Naziv taba: recenzije", "default": "Rating & Reviews" },
-    { "type": "text", "id": "faqs_label", "label": "Naziv taba: pitanja", "default": "FAQs" },
-    { "type": "text", "id": "details_empty", "label": "Tekst kad proizvod nema opis", "default": "No details yet." }
+    { "type": "text", "id": "details_label", "label": "Tab name: details", "default": "Product Details" },
+    { "type": "text", "id": "reviews_label", "label": "Tab name: reviews", "default": "Rating & Reviews" },
+    { "type": "text", "id": "faqs_label", "label": "Tab name: FAQ", "default": "FAQs" },
+    { "type": "text", "id": "details_empty", "label": "Text when the product has no description", "default": "No details yet." }
   ],
   "blocks": [
     { "type": "@app" },
@@ -251,13 +251,13 @@
       "type": "faq",
       "name": "FAQ",
       "settings": [
-        { "type": "text", "id": "question", "label": "Pitanje", "default": "How do I choose my size?" },
-        { "type": "richtext", "id": "answer", "label": "Odgovor", "default": "<p>Check the size guide and compare the measurements with a shirt you already own.</p>" }
+        { "type": "text", "id": "question", "label": "Question", "default": "How do I choose my size?" },
+        { "type": "richtext", "id": "answer", "label": "Answer", "default": "<p>Check the size guide and compare the measurements with a shirt you already own.</p>" }
       ]
     }
   ],
   "presets": [
-    { "name": "Tabovi proizvoda" }
+    { "name": "Product tabs" }
   ],
   "enabled_on": {
     "templates": ["product"]

@@ -14,7 +14,7 @@
   }
 }
 
-/* JS pomera traku preko --lm-x */
+/* JS moves the track via --lm-x */
 .logo-marquee__track {
   display: flex;
   width: max-content;
@@ -29,7 +29,7 @@
   cursor: grabbing;
 }
 
-/* Razmak posle poslednjeg logoa = isti kao izmedju logoa, da se spoj ne vidi */
+/* Gap after the last logo matches the gap between logos, so the loop seam is invisible */
 .logo-marquee__list {
   display: flex;
   flex-shrink: 0;

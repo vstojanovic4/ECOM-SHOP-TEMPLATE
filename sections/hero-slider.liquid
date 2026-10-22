@@ -8,7 +8,7 @@
     assign is_slider = true
   endif
 
-  # Odnos stranica za "Adapt to image" uzimamo sa prvog slajda
+  # Aspect ratio for "adapt to image" comes from the first slide
   assign first = section.blocks.first.settings
   assign first_desktop = first.image_desktop | default: first.image_mobile
   assign first_mobile = first.image_mobile | default: first.image_desktop
@@ -183,7 +183,7 @@
               {%- endif -%}
 
               {%- if b.button_label != blank -%}
-                {%- comment -%} Samo izgled dugmeta - klik bilo gde na slajdu ide na link slajda {%- endcomment -%}
+                {%- comment -%} Visual button only - a click anywhere on the slide opens the slide link {%- endcomment -%}
                 <span class="hero-slider__button"{% if b.link != blank %} aria-hidden="true"{% endif %}>
                   {{- b.button_label | escape -}}
                 </span>

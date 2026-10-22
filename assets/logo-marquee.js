@@ -6,7 +6,7 @@ if (!customElements.get('logo-marquee')) {
       if (!this.track || !this.list) return;
 
       this.speed = Number(this.dataset.speed) || 50;
-      // 1 = s desna na levo, -1 = s leva na desno
+      // 1 = right to left, -1 = left to right
       this.direction = this.dataset.direction === 'right' ? -1 : 1;
       this.pos = 0;
       this.setWidth = 0;
@@ -18,12 +18,12 @@ if (!customElements.get('logo-marquee')) {
       this.abort = new AbortController();
       const options = { signal: this.abort.signal };
 
-      // Kad se ucitaju slike ili promeni sirina ekrana, preracunaj
+      // Re-measure when images load or the viewport width changes
       this.resizeObserver = new ResizeObserver(() => this.measure());
       this.resizeObserver.observe(this.list);
       this.resizeObserver.observe(this);
 
-      // Ne animiraj dok traka nije na ekranu
+      // Do not animate while the bar is off screen
       this.intersectionObserver = new IntersectionObserver(([entry]) => {
         this.visible = entry.isIntersecting;
       });
@@ -43,7 +43,7 @@ if (!customElements.get('logo-marquee')) {
       cancelAnimationFrame(this.frame);
     }
 
-    // Kopiramo listu logoa koliko puta treba da traka uvek bude puna
+    // Clone the logo list as many times as needed to keep the bar full
     measure() {
       const width = this.list.offsetWidth;
       if (!width) return;
@@ -73,7 +73,7 @@ if (!customElements.get('logo-marquee')) {
       const canMove = !this.dragging && this.visible && !this.reducedMotion.matches && this.setWidth;
 
       if (this.lastTime !== null && canMove) {
-        // Max 100ms po frejmu, da ne "skoci" posle vracanja na tab
+        // Cap at 100ms per frame to avoid a jump after returning to the tab
         const delta = Math.min(time - this.lastTime, 100) / 1000;
         this.pos += this.speed * this.direction * delta;
         this.render();
@@ -90,7 +90,7 @@ if (!customElements.get('logo-marquee')) {
       this.track.style.setProperty('--lm-x', `${-this.pos}px`);
     }
 
-    // Prevlacenje misem i prstom
+    // Mouse and touch dragging
     setupDrag(options) {
       let pointerId = null;
       let startX = 0;

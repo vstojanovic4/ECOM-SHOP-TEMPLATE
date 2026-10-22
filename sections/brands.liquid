@@ -72,27 +72,27 @@
 
 {% schema %}
 {
-  "name": "Brendovi",
+  "name": "Brands",
   "settings": [
-    { "type": "color", "id": "bg_color", "label": "Pozadina", "default": "#000000" },
-    { "type": "color", "id": "text_color", "label": "Boja naziva (dok nema loga)", "default": "#ffffff" }
+    { "type": "color", "id": "bg_color", "label": "Background", "default": "#000000" },
+    { "type": "color", "id": "text_color", "label": "Name color (until a logo is added)", "default": "#ffffff" }
   ],
   "blocks": [
     {
       "type": "brand",
-      "name": "Brend",
+      "name": "Brand",
       "settings": [
-        { "type": "text", "id": "name", "label": "Naziv brenda", "default": "Brand", "info": "Prikazuje se dok ne ubaciš logo. Koristi se i kao opis slike." },
-        { "type": "image_picker", "id": "logo", "label": "Logo", "info": "Beli logo, providna pozadina (PNG ili SVG)." },
-        { "type": "url", "id": "link", "label": "Link (opciono)" },
-        { "type": "range", "id": "width", "label": "Širina loga (desktop)", "min": 40, "max": 300, "step": 4, "unit": "px", "default": 160 },
-        { "type": "range", "id": "width_mobile", "label": "Širina loga (mobilni)", "min": 30, "max": 200, "step": 2, "unit": "px", "default": 110 }
+        { "type": "text", "id": "name", "label": "Brand name", "default": "Brand", "info": "Shown until you add a logo. Also used as the image alt text." },
+        { "type": "image_picker", "id": "logo", "label": "Logo", "info": "White logo, transparent background (PNG or SVG)." },
+        { "type": "url", "id": "link", "label": "Link (optional)" },
+        { "type": "range", "id": "width", "label": "Logo width (desktop)", "min": 40, "max": 300, "step": 4, "unit": "px", "default": 160 },
+        { "type": "range", "id": "width_mobile", "label": "Logo width (mobile)", "min": 30, "max": 200, "step": 2, "unit": "px", "default": 110 }
       ]
     }
   ],
   "presets": [
     {
-      "name": "Brendovi",
+      "name": "Brands",
       "blocks": [
         { "type": "brand", "settings": { "name": "Versace" } },
         { "type": "brand", "settings": { "name": "Zara" } },

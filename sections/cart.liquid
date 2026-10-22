@@ -24,6 +24,18 @@
     <p class="cart-page__error" role="alert" data-cart-error hidden></p>
 
     {%- if cart.item_count > 0 -%}
+      {%- if s.show_free_shipping -%}
+        <div class="cart-page__shipping">
+          {%- render 'free-shipping-bar',
+            threshold: s.free_shipping_threshold,
+            text: s.free_shipping_text,
+            success_text: s.free_shipping_success,
+            popup_text: s.free_shipping_popup,
+            color: s.free_shipping_color
+          -%}
+        </div>
+      {%- endif -%}
+
       <div class="cart-page__layout">
 
         {%- comment -%} ---------- Proizvodi ---------- {%- endcomment -%}
@@ -209,6 +221,13 @@
     opacity: 0.5;
     pointer-events: none;
     transition: opacity 0.15s;
+  }
+
+  .cart-page__shipping {
+    margin-bottom: 20px;
+    padding: 16px 24px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
   }
 
   .cart-page__layout {
@@ -643,15 +662,22 @@
 {
   "name": "t:general.cart",
   "settings": [
-    { "type": "text", "id": "heading", "label": "Naslov", "default": "Your cart" },
-    { "type": "text", "id": "summary_heading", "label": "Naslov pregleda", "default": "Order Summary" },
-    { "type": "text", "id": "delivery_text", "label": "Tekst za dostavu", "default": "Calculated at checkout", "info": "Cena dostave se računa na checkoutu, kad kupac unese adresu." },
-    { "type": "checkbox", "id": "show_promo", "label": "Prikaži polje za promo kod", "default": true },
-    { "type": "text", "id": "promo_placeholder", "label": "Tekst u polju za kod", "default": "Add promo code" },
-    { "type": "text", "id": "promo_button", "label": "Dugme za kod", "default": "Apply" },
-    { "type": "text", "id": "checkout_label", "label": "Dugme za plaćanje", "default": "Go to Checkout" },
-    { "type": "text", "id": "empty_text", "label": "Tekst kad je korpa prazna", "default": "Your cart is empty." },
-    { "type": "text", "id": "continue_label", "label": "Dugme kad je korpa prazna", "default": "Continue shopping" }
+    { "type": "text", "id": "heading", "label": "Heading", "default": "Your cart" },
+    { "type": "text", "id": "summary_heading", "label": "Summary heading", "default": "Order Summary" },
+    { "type": "text", "id": "delivery_text", "label": "Delivery text", "default": "Calculated at checkout", "info": "Shipping is calculated at checkout, after the customer enters an address." },
+    { "type": "checkbox", "id": "show_promo", "label": "Show promo code field", "default": true },
+    { "type": "text", "id": "promo_placeholder", "label": "Promo code placeholder", "default": "Add promo code" },
+    { "type": "text", "id": "promo_button", "label": "Promo code button", "default": "Apply" },
+    { "type": "text", "id": "checkout_label", "label": "Checkout button", "default": "Go to Checkout" },
+    { "type": "text", "id": "empty_text", "label": "Empty cart text", "default": "Your cart is empty." },
+    { "type": "text", "id": "continue_label", "label": "Empty cart button", "default": "Continue shopping" },
+    { "type": "header", "content": "Free shipping bar" },
+    { "type": "checkbox", "id": "show_free_shipping", "label": "Show free shipping bar", "default": true },
+    { "type": "number", "id": "free_shipping_threshold", "label": "Free shipping threshold", "info": "Amount in the store currency. Also set a free shipping rate with the same minimum in Settings > Shipping and delivery.", "default": 200 },
+    { "type": "text", "id": "free_shipping_text", "label": "Text below threshold", "info": "[amount] is replaced with the remaining amount.", "default": "You're [amount] away from free shipping!" },
+    { "type": "text", "id": "free_shipping_success", "label": "Text when reached", "default": "You've got free shipping!" },
+    { "type": "text", "id": "free_shipping_popup", "label": "Popup text when reached", "info": "Shown for a few seconds at the moment the threshold is reached. Leave empty to turn off the popup.", "default": "Congratulations! You've got free shipping!" },
+    { "type": "color", "id": "free_shipping_color", "label": "Bar color", "default": "#000000" }
   ]
 }
 {% endschema %}
