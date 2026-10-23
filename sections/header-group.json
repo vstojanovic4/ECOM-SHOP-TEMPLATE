@@ -7,24 +7,92 @@
  * made to this file may be overwritten.
  * ------------------------------------------------------------
  */
-{
+ {
   "type": "header",
   "name": "t:general.header",
   "sections": {
     "announcement-bar": {
       "type": "announcement-bar",
-      "settings": {}
+      "settings": {
+        "text": "Sign up and get 20% off to your first order.",
+        "link_text": "Sign Up Now",
+        "link": "",
+        "bg_color": "#000000",
+        "text_color": "#ffffff"
+      }
     },
     "header": {
       "type": "header",
       "blocks": {
-        "shop": { "type": "menu_item", "settings": { "label": "Shop", "link": "/collections/all", "submenu": "main-menu" } },
-        "on-sale": { "type": "menu_item", "settings": { "label": "On Sale", "link": "/collections/on-sale" } },
-        "new-arrivals": { "type": "menu_item", "settings": { "label": "New Arrivals", "link": "/collections/all" } },
-        "brands": { "type": "menu_item", "settings": { "label": "Brands", "link": "/collections/all" } }
+        "shop": {
+          "type": "menu_item",
+          "settings": {
+            "label": "Shop",
+            "link": "/collections/all",
+            "submenu": "main-menu",
+            "all_label": "Shop all",
+            "promo_heading": "",
+            "promo_link": ""
+          }
+        },
+        "on-sale": {
+          "type": "menu_item",
+          "settings": {
+            "label": "On Sale",
+            "link": "/collections/on-sale",
+            "submenu": "on-sale",
+            "all_label": "Shop all",
+            "promo_heading": "",
+            "promo_link": ""
+          }
+        },
+        "menu_item_HdUG9t": {
+          "type": "menu_item",
+          "settings": {
+            "label": "Link",
+            "link": "https://admin.shopify.com/store/testshopvasilije/themes/189238116643/editor?section=sections--27677271163171__header&block=sections--27677271163171__header__menu_item_HdUG9t",
+            "submenu": "",
+            "all_label": "Shop all",
+            "promo_heading": "",
+            "promo_link": ""
+          }
+        },
+        "new-arrivals": {
+          "type": "menu_item",
+          "settings": {
+            "label": "New Arrivals",
+            "link": "shopify://collections/new-project",
+            "submenu": "new-arrivals",
+            "all_label": "Shop all",
+            "promo_heading": "",
+            "promo_link": ""
+          }
+        },
+        "brands": {
+          "type": "menu_item",
+          "settings": {
+            "label": "Brands",
+            "link": "/collections/all",
+            "submenu": "",
+            "all_label": "Shop all",
+            "promo_heading": "",
+            "promo_link": ""
+          }
+        }
       },
-      "block_order": ["shop", "on-sale", "new-arrivals", "brands"],
-      "settings": {}
+      "block_order": [
+        "shop",
+        "on-sale",
+        "menu_item_HdUG9t",
+        "new-arrivals",
+        "brands"
+      ],
+      "settings": {
+        "logo_text": "SHOP.CO",
+        "search_placeholder": "Search for products...",
+        "bg_color": "#ffffff",
+        "text_color": "#000000"
+      }
     }
   },
   "order": [
