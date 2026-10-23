@@ -7,7 +7,15 @@
 {%- endcapture -%}
 
 {%- capture icon_chevron -%}
-  <svg class="header-svg header-svg--small" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <svg class="header-svg header-svg--small header-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endcapture -%}
+
+{%- capture icon_arrow -%}
+  <svg class="header-svg header-svg--small" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h16m0 0l-7-7m7 7l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+{%- endcapture -%}
+
+{%- capture icon_close -%}
+  <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 {%- endcapture -%}
 
 {%- capture search_form -%}
@@ -20,92 +28,197 @@
   </form>
 {%- endcapture -%}
 
-<header class="site-header full-width" style="background: {{ section.settings.bg_color }}; color: {{ section.settings.text_color }};">
-  <div class="site-header__inner">
+<site-header
+  class="full-width"
+  style="--header-bg: {{ section.settings.bg_color }}; --header-text: {{ section.settings.text_color }};"
+>
+  <header class="site-header">
+    <div class="site-header__inner">
 
-    {%- comment -%} Hamburger (samo mobilni) {%- endcomment -%}
-    <details class="header-drawer" data-header-details>
-      <summary class="header-icon" aria-label="Meni">
+      {%- comment -%} Hamburger (mobile only) {%- endcomment -%}
+      <button
+        type="button"
+        class="header-icon header-menu-toggle"
+        aria-label="Open menu"
+        aria-controls="HeaderMobileMenu"
+        aria-expanded="false"
+        data-mobile-menu-open
+      >
         <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </summary>
-      <nav class="header-drawer__panel" aria-label="Meni">
-        <ul class="header-drawer__list" role="list">
+      </button>
+
+      {%- comment -%} Logo {%- endcomment -%}
+      <a href="{{ routes.root_url }}" class="header-logo">
+        {%- if section.settings.logo != blank -%}
+          {{ section.settings.logo | image_url: width: 400 | image_tag: alt: shop.name, class: 'header-logo__img' }}
+        {%- else -%}
+          {{ section.settings.logo_text | default: shop.name | escape }}
+        {%- endif -%}
+      </a>
+
+      {%- comment -%} Desktop menu: items with a menu open a full width mega menu {%- endcomment -%}
+      <nav class="header-nav" aria-label="Main menu">
+        <ul class="header-nav__list" role="list">
           {%- for block in menu_items -%}
-            <li><a href="{{ block.settings.link | default: '#' }}">{{ block.settings.label | escape }}</a></li>
-            {%- for child in block.settings.submenu.links -%}
-              <li class="header-drawer__child"><a href="{{ child.url }}">{{ child.title | escape }}</a></li>
-            {%- endfor -%}
+            {%- assign b = block.settings -%}
+            <li class="header-nav__item" {{ block.shopify_attributes }}{% if b.submenu.links.size > 0 %} data-mega-item{% endif %}>
+              {%- if b.submenu.links.size > 0 -%}
+                <button
+                  type="button"
+                  class="header-nav__link"
+                  aria-expanded="false"
+                  aria-controls="MegaMenu-{{ block.id }}"
+                  data-mega-toggle
+                >
+                  {{- b.label | escape }} {{ icon_chevron -}}
+                </button>
+
+                <div class="mega-menu" id="MegaMenu-{{ block.id }}" data-mega-panel hidden>
+                  <div class="mega-menu__inner">
+                    <div class="mega-menu__columns">
+                      {%- if b.link != blank and b.all_label != blank -%}
+                        <a class="mega-menu__all" href="{{ b.link }}">{{ b.all_label | escape }} {{ icon_arrow }}</a>
+                      {%- endif -%}
+
+                      {%- comment -%} Links without children are grouped into one column {%- endcomment -%}
+                      {%- capture loose_links -%}
+                        {%- for link in b.submenu.links -%}
+                          {%- if link.links.size == 0 -%}
+                            <li><a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title | escape }}</a></li>
+                          {%- endif -%}
+                        {%- endfor -%}
+                      {%- endcapture -%}
+                      {%- if loose_links != blank -%}
+                        <ul class="mega-menu__links" role="list">{{ loose_links }}</ul>
+                      {%- endif -%}
+
+                      {%- comment -%} Links with children become columns with a heading {%- endcomment -%}
+                      {%- for link in b.submenu.links -%}
+                        {%- if link.links.size > 0 -%}
+                          <div class="mega-menu__column">
+                            <a class="mega-menu__heading" href="{{ link.url }}">{{ link.title | escape }}</a>
+                            <ul class="mega-menu__links" role="list">
+                              {%- for child in link.links -%}
+                                <li><a href="{{ child.url }}"{% if child.current %} aria-current="page"{% endif %}>{{ child.title | escape }}</a></li>
+                              {%- endfor -%}
+                            </ul>
+                          </div>
+                        {%- endif -%}
+                      {%- endfor -%}
+                    </div>
+
+                    {%- if b.promo_image != blank -%}
+                      {%- assign promo_link = b.promo_link | default: b.link -%}
+                      {%- if promo_link != blank -%}<a class="mega-menu__promo" href="{{ promo_link }}">{%- else -%}<div class="mega-menu__promo">{%- endif -%}
+                        {{ b.promo_image | image_url: width: 640 | image_tag: widths: '320, 640', sizes: '300px', loading: 'lazy', class: 'mega-menu__promo-img' }}
+                        {%- if b.promo_heading != blank -%}
+                          <span class="mega-menu__promo-title">{{ b.promo_heading | escape }}</span>
+                        {%- endif -%}
+                      {%- if promo_link != blank -%}</a>{%- else -%}</div>{%- endif -%}
+                    {%- endif -%}
+                  </div>
+                </div>
+              {%- else -%}
+                <a class="header-nav__link" href="{{ b.link | default: '#' }}">{{ b.label | escape }}</a>
+              {%- endif -%}
+            </li>
           {%- endfor -%}
         </ul>
       </nav>
-    </details>
 
-    {%- comment -%} Logo {%- endcomment -%}
-    <a href="{{ routes.root_url }}" class="header-logo">
-      {%- if section.settings.logo != blank -%}
-        {{ section.settings.logo | image_url: width: 400 | image_tag: alt: shop.name, class: 'header-logo__img' }}
-      {%- else -%}
-        {{ section.settings.logo_text | default: shop.name | escape }}
-      {%- endif -%}
-    </a>
+      {%- comment -%} Search (desktop) {%- endcomment -%}
+      <div class="header-search-desktop">{{ search_form }}</div>
 
-    {%- comment -%} Meni (desktop) {%- endcomment -%}
-    <nav class="header-nav" aria-label="Glavni meni">
-      <ul class="header-nav__list" role="list">
-        {%- for block in menu_items -%}
-          <li {{ block.shopify_attributes }}>
-            {%- if block.settings.submenu.links.size > 0 -%}
-              <details class="header-dropdown" data-header-details>
-                <summary class="header-nav__link">{{ block.settings.label | escape }} {{ icon_chevron }}</summary>
-                <ul class="header-dropdown__list" role="list">
-                  {%- for child in block.settings.submenu.links -%}
-                    <li><a href="{{ child.url }}">{{ child.title | escape }}</a></li>
-                  {%- endfor -%}
-                </ul>
-              </details>
-            {%- else -%}
-              <a class="header-nav__link" href="{{ block.settings.link | default: '#' }}">{{ block.settings.label | escape }}</a>
-            {%- endif -%}
-          </li>
-        {%- endfor -%}
-      </ul>
-    </nav>
+      {%- comment -%} Icons {%- endcomment -%}
+      <div class="header-icons">
+        <details class="header-search-mobile" data-header-details>
+          <summary class="header-icon" aria-label="Search">{{ icon_search }}</summary>
+          <div class="header-search-mobile__panel">{{ search_form }}</div>
+        </details>
 
-    {%- comment -%} Pretraga (desktop) {%- endcomment -%}
-    <div class="header-search-desktop">{{ search_form }}</div>
+        <a href="{{ routes.cart_url }}" class="header-icon" aria-label="Cart"{% if settings.cart_type == 'drawer' %} aria-haspopup="dialog" data-cart-drawer-toggle{% endif %}>
+          <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 3h2.4l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h9.3a1.5 1.5 0 0 0 1.5-1.1L21 7H5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.5" fill="currentColor"/><circle cx="17.5" cy="20" r="1.5" fill="currentColor"/></svg>
+          {%- comment -%} Always rendered (hidden at 0), so the cart can update it without a page reload {%- endcomment -%}
+          <span class="header-cart-count" data-cart-count{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</span>
+        </a>
 
-    {%- comment -%} Ikonice {%- endcomment -%}
-    <div class="header-icons">
-      <details class="header-search-mobile" data-header-details>
-        <summary class="header-icon" aria-label="Pretraga">{{ icon_search }}</summary>
-        <div class="header-search-mobile__panel">{{ search_form }}</div>
-      </details>
+        <a href="{{ routes.account_url }}" class="header-icon" aria-label="Account">
+          <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.6" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M6.2 18.6c1.3-2 3.4-3.1 5.8-3.1s4.5 1.1 5.8 3.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </a>
+      </div>
 
-      <a href="{{ routes.cart_url }}" class="header-icon" aria-label="Korpa">
-        <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 3h2.4l2.4 11.2a1.5 1.5 0 0 0 1.5 1.2h9.3a1.5 1.5 0 0 0 1.5-1.1L21 7H5.6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="20" r="1.5" fill="currentColor"/><circle cx="17.5" cy="20" r="1.5" fill="currentColor"/></svg>
-        {%- comment -%} Uvek postoji (sakriven kad je 0), da bi ga korpa osvežila bez osvežavanja strane {%- endcomment -%}
-        <span class="header-cart-count" data-cart-count{% if cart.item_count == 0 %} hidden{% endif %}>{{ cart.item_count }}</span>
-      </a>
-
-      <a href="{{ routes.account_url }}" class="header-icon" aria-label="Nalog">
-        <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9.6" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="3.4" stroke="currentColor" stroke-width="1.8"/><path d="M6.2 18.6c1.3-2 3.4-3.1 5.8-3.1s4.5 1.1 5.8 3.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-      </a>
     </div>
+  </header>
 
-  </div>
-</header>
+  {%- comment -%} Mobile off-canvas menu {%- endcomment -%}
+  <dialog class="mobile-menu" id="HeaderMobileMenu" aria-label="Menu" data-mobile-menu>
+    <div class="mobile-menu__panel">
+      <div class="mobile-menu__header">
+        <span class="mobile-menu__logo">{{ section.settings.logo_text | default: shop.name | escape }}</span>
+        <button type="button" class="header-icon" aria-label="Close menu" data-mobile-menu-close>{{ icon_close }}</button>
+      </div>
 
-<script>
-  // Zatvara otvoren meni/pretragu kada se klikne van njega
-  document.addEventListener('click', function (event) {
-    document.querySelectorAll('[data-header-details][open]').forEach(function (details) {
-      if (!details.contains(event.target)) details.removeAttribute('open');
-    });
-  });
-</script>
+      <nav aria-label="Main menu">
+        <ul class="mobile-menu__list" role="list">
+          {%- for block in menu_items -%}
+            {%- assign b = block.settings -%}
+            <li class="mobile-menu__item">
+              {%- if b.submenu.links.size > 0 -%}
+                <button
+                  type="button"
+                  class="mobile-menu__link mobile-menu__toggle"
+                  aria-expanded="false"
+                  aria-controls="MobileSubmenu-{{ block.id }}"
+                  data-accordion-toggle
+                >
+                  {{- b.label | escape }} {{ icon_chevron -}}
+                </button>
+
+                <div class="mobile-menu__submenu" id="MobileSubmenu-{{ block.id }}" hidden>
+                  {%- if b.link != blank and b.all_label != blank -%}
+                    <a class="mobile-menu__all" href="{{ b.link }}">{{ b.all_label | escape }} {{ icon_arrow }}</a>
+                  {%- endif -%}
+
+                  <ul class="mobile-menu__sublist" role="list">
+                    {%- for link in b.submenu.links -%}
+                      {%- if link.links.size > 0 -%}
+                        <li class="mobile-menu__group">
+                          <a class="mobile-menu__heading" href="{{ link.url }}">{{ link.title | escape }}</a>
+                          <ul class="mobile-menu__sublist" role="list">
+                            {%- for child in link.links -%}
+                              <li><a href="{{ child.url }}"{% if child.current %} aria-current="page"{% endif %}>{{ child.title | escape }}</a></li>
+                            {%- endfor -%}
+                          </ul>
+                        </li>
+                      {%- else -%}
+                        <li><a href="{{ link.url }}"{% if link.current %} aria-current="page"{% endif %}>{{ link.title | escape }}</a></li>
+                      {%- endif -%}
+                    {%- endfor -%}
+                  </ul>
+                </div>
+              {%- else -%}
+                <a class="mobile-menu__link" href="{{ b.link | default: '#' }}">{{ b.label | escape }}</a>
+              {%- endif -%}
+            </li>
+          {%- endfor -%}
+        </ul>
+      </nav>
+    </div>
+  </dialog>
+</site-header>
 
 {% stylesheet %}
-  .site-header a {
+  site-header {
+    display: block;
+  }
+  .site-header {
+    position: relative;
+    z-index: 20;
+    background: var(--header-bg);
+    color: var(--header-text);
+  }
+  .site-header a,
+  .mobile-menu a {
     color: inherit;
     text-decoration: none;
   }
@@ -116,12 +229,12 @@
   .site-header summary::-webkit-details-marker {
     display: none;
   }
-  .site-header .header-svg {
+  .header-svg {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
   }
-  .site-header .header-svg--small {
+  .header-svg--small {
     width: 16px;
     height: 16px;
   }
@@ -135,7 +248,6 @@
   }
 
   .site-header__inner {
-    position: relative;
     display: flex;
     align-items: center;
     width: min(1240px, 100% - 32px);
@@ -160,7 +272,7 @@
     height: auto;
   }
 
-  /* Meni */
+  /* Desktop menu */
   .header-nav__list {
     display: flex;
     gap: 24px;
@@ -172,31 +284,127 @@
     display: flex;
     align-items: center;
     gap: 4px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
     font-size: 16px;
     white-space: nowrap;
+    cursor: pointer;
   }
-  .header-dropdown {
+  /* Hover: underline grows from left to right; stays while the mega menu is open */
+  .header-nav__link {
     position: relative;
   }
-  .header-dropdown__list {
+  .header-nav__link::after {
+    content: '';
     position: absolute;
-    top: calc(100% + 12px);
     left: 0;
-    z-index: 10;
-    min-width: 180px;
-    margin: 0;
-    padding: 8px 0;
-    list-style: none;
-    background: #fff;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: 12px;
+    right: 0;
+    bottom: -6px;
+    height: 2px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.25s ease;
   }
-  .header-dropdown__list a {
-    display: block;
-    padding: 8px 16px;
+  .header-nav__link:hover::after,
+  .header-nav__link[aria-expanded='true']::after {
+    transform: scaleX(1);
+  }
+  .header-icon:hover {
+    opacity: 0.6;
   }
 
-  /* Pretraga */
+  .header-chevron {
+    transition: transform 0.2s ease;
+  }
+  [aria-expanded='true'] > .header-chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Mega menu: full width block under the header */
+  .mega-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 30;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    background: var(--header-bg);
+    box-shadow: 0 16px 24px rgba(0, 0, 0, 0.08);
+    animation: mega-menu-in 0.2s ease;
+  }
+  .mega-menu[hidden] {
+    display: none;
+  }
+  @keyframes mega-menu-in {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+  .mega-menu__inner {
+    display: flex;
+    gap: 40px;
+    width: min(1240px, 100% - 32px);
+    margin: 0 auto;
+    padding: 32px 0 40px;
+  }
+  .mega-menu__columns {
+    display: grid;
+    flex: 1;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    align-content: start;
+    gap: 24px 40px;
+  }
+  .mega-menu__all {
+    display: inline-flex;
+    grid-column: 1 / -1;
+    align-items: center;
+    gap: 8px;
+    justify-self: start;
+    font-weight: 700;
+  }
+  .mega-menu__heading {
+    display: block;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .mega-menu__links {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mega-menu__links a {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .mega-menu__links a:hover,
+  .mega-menu__links a[aria-current] {
+    color: #000;
+    text-decoration: underline;
+  }
+  .mega-menu__promo {
+    flex-shrink: 0;
+    width: 300px;
+  }
+  .mega-menu__promo-img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    border-radius: 20px;
+    object-fit: cover;
+  }
+  .mega-menu__promo-title {
+    display: block;
+    margin-top: 12px;
+    font-weight: 700;
+  }
+
+  /* Search */
   .header-search-desktop {
     flex: 1;
     max-width: 577px;
@@ -225,8 +433,12 @@
   .header-search__field input::placeholder {
     color: rgba(0, 0, 0, 0.4);
   }
+  .header-search__field:focus-within {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
 
-  /* Ikonice */
+  /* Icons */
   .header-icons {
     display: flex;
     align-items: center;
@@ -237,6 +449,11 @@
   .header-icon {
     position: relative;
     display: flex;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
   }
   .header-cart-count {
     position: absolute;
@@ -253,13 +470,154 @@
     text-align: center;
   }
 
-  /* Elementi samo za mobilni */
-  .header-drawer,
+  /* Visible focus for everything in the header and the mobile menu */
+  .site-header :focus-visible,
+  .mobile-menu :focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 4px;
+    border-radius: 4px;
+  }
+
+  /* Mobile only elements */
+  .header-menu-toggle,
   .header-search-mobile {
     display: none;
   }
 
-  /* ---------- MOBILNI ---------- */
+  /* Mobile off-canvas menu */
+  html.mobile-menu-open {
+    overflow: hidden;
+    scrollbar-gutter: stable;
+  }
+  .mobile-menu {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--header-text);
+    overflow: hidden;
+  }
+  .mobile-menu::backdrop {
+    background: rgb(0 0 0 / 0);
+    transition: background 0.3s ease;
+  }
+  .mobile-menu.is-open::backdrop {
+    background: rgb(0 0 0 / 0.4);
+  }
+  .mobile-menu__panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: min(360px, 85%);
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--header-bg);
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  .mobile-menu.is-open .mobile-menu__panel {
+    transform: none;
+  }
+  .mobile-menu__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 16px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .mobile-menu__logo {
+    font-family: var(--font-heading);
+    font-stretch: 106%;
+    font-size: 25px;
+    font-weight: 800;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+  .mobile-menu__list {
+    margin: 0;
+    padding: 0 16px 24px;
+    list-style: none;
+  }
+  .mobile-menu__item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .mobile-menu__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 16px 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: 18px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+  }
+  .mobile-menu__submenu {
+    padding: 0 0 16px;
+  }
+  .mobile-menu__submenu[hidden] {
+    display: none;
+  }
+  .mobile-menu__all {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+  .mobile-menu__sublist {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mobile-menu__sublist a {
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .mobile-menu__sublist a[aria-current] {
+    color: #000;
+    text-decoration: underline;
+  }
+  .mobile-menu__group + li,
+  li + .mobile-menu__group {
+    margin-top: 8px;
+  }
+  .mobile-menu__group > .mobile-menu__sublist {
+    margin-top: 10px;
+    padding-left: 12px;
+  }
+  .mobile-menu__sublist .mobile-menu__heading {
+    font-size: 14px;
+    font-weight: 700;
+    color: #000;
+    text-transform: uppercase;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mega-menu {
+      animation: none;
+    }
+    .header-chevron,
+    .header-nav__link::after,
+    .mobile-menu::backdrop,
+    .mobile-menu__panel {
+      transition: none;
+    }
+  }
+
+  /* ---------- MOBILE ---------- */
   @media (max-width: 989px) {
     .site-header__inner {
       padding: 20px 0;
@@ -268,9 +626,9 @@
     .header-search-desktop {
       display: none;
     }
-    .header-drawer,
+    .header-menu-toggle,
     .header-search-mobile {
-      display: block;
+      display: flex;
     }
     .header-logo {
       margin: 0 0 0 16px;
@@ -283,35 +641,181 @@
       gap: 12px;
       padding-left: 16px;
     }
-
-    .header-drawer__panel,
     .header-search-mobile__panel {
       position: absolute;
       top: 100%;
       left: 0;
       right: 0;
       z-index: 10;
-      padding: 8px 0 16px;
-      background: #fff;
+      padding: 8px 16px 16px;
+      background: var(--header-bg);
       border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    }
-    .header-drawer__list {
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-    .header-drawer__list a {
-      display: block;
-      padding: 10px 0;
-      font-size: 18px;
-    }
-    .header-drawer__child a {
-      padding-left: 16px;
-      font-size: 16px;
-      color: rgba(0, 0, 0, 0.6);
     }
   }
 {% endstylesheet %}
+
+{% javascript %}
+  if (!customElements.get('site-header')) {
+    class SiteHeader extends HTMLElement {
+      connectedCallback() {
+        this.abort = new AbortController();
+        const options = { signal: this.abort.signal };
+
+        this.desktop = window.matchMedia('(min-width: 990px)');
+        this.openItem = null;
+        this.pointerType = 'mouse';
+
+        this.setupMegaMenu(options);
+        this.setupMobileMenu(options);
+
+        document.addEventListener('click', (event) => {
+          if (this.openItem && !this.openItem.contains(event.target)) this.closeMega();
+
+          // Close the mobile search when clicking outside of it
+          this.querySelectorAll('[data-header-details][open]').forEach((details) => {
+            if (!details.contains(event.target)) details.removeAttribute('open');
+          });
+        }, options);
+
+        // Switching between mobile and desktop closes both menus
+        this.desktop.addEventListener('change', () => {
+          this.closeMega();
+          this.closeMobileMenu(true);
+        }, options);
+      }
+
+      disconnectedCallback() {
+        this.abort?.abort();
+        clearTimeout(this.closeTimer);
+        clearTimeout(this.mobileTimer);
+        document.documentElement.classList.remove('mobile-menu-open');
+      }
+
+      /* ---------- Desktop mega menu ---------- */
+
+      setupMegaMenu(options) {
+        this.querySelectorAll('[data-mega-item]').forEach((item) => {
+          const button = item.querySelector('[data-mega-toggle]');
+
+          // Hover opens; leaving closes after a short delay, so the menu
+          // does not close while the mouse moves from the button to the panel
+          item.addEventListener('mouseenter', () => {
+            if (!this.desktop.matches) return;
+            clearTimeout(this.closeTimer);
+            this.openMega(item);
+          }, options);
+          item.addEventListener('mouseleave', () => {
+            if (!this.desktop.matches) return;
+            clearTimeout(this.closeTimer);
+            this.closeTimer = setTimeout(() => this.closeMega(), 200);
+          }, options);
+
+          button.addEventListener('pointerdown', (event) => {
+            this.pointerType = event.pointerType;
+          }, options);
+
+          button.addEventListener('click', (event) => {
+            // A mouse click comes right after hover opened the menu, so keep it open
+            if (event.detail > 0 && this.pointerType === 'mouse') {
+              this.openMega(item);
+              return;
+            }
+            // Keyboard (Enter / Space) and touch toggle the menu
+            if (this.openItem === item) this.closeMega();
+            else this.openMega(item);
+          }, options);
+
+          // Close when keyboard focus leaves the item and its panel
+          item.addEventListener('focusout', (event) => {
+            if (this.openItem === item && !item.contains(event.relatedTarget)) this.closeMega();
+          }, options);
+        });
+
+        document.addEventListener('keydown', (event) => {
+          if (event.key !== 'Escape' || !this.openItem) return;
+          const button = this.openItem.querySelector('[data-mega-toggle]');
+          const hadFocus = this.openItem.contains(document.activeElement);
+          this.closeMega();
+          if (hadFocus) button.focus();
+        }, options);
+      }
+
+      openMega(item) {
+        if (this.openItem === item) return;
+        this.closeMega();
+        item.querySelector('[data-mega-panel]').hidden = false;
+        item.querySelector('[data-mega-toggle]').setAttribute('aria-expanded', 'true');
+        this.openItem = item;
+      }
+
+      closeMega() {
+        clearTimeout(this.closeTimer);
+        if (!this.openItem) return;
+        this.openItem.querySelector('[data-mega-panel]').hidden = true;
+        this.openItem.querySelector('[data-mega-toggle]').setAttribute('aria-expanded', 'false');
+        this.openItem = null;
+      }
+
+      /* ---------- Mobile off-canvas menu ---------- */
+
+      setupMobileMenu(options) {
+        this.mobileMenu = this.querySelector('[data-mobile-menu]');
+        this.mobileToggle = this.querySelector('[data-mobile-menu-open]');
+        if (!this.mobileMenu || !this.mobileToggle) return;
+
+        this.mobileToggle.addEventListener('click', () => this.openMobileMenu(), options);
+
+        this.mobileMenu.addEventListener('click', (event) => {
+          // A click on the dialog itself = a click on the dark overlay
+          if (event.target === this.mobileMenu || event.target.closest('[data-mobile-menu-close]')) {
+            this.closeMobileMenu();
+            return;
+          }
+
+          // Accordion: open / close the links of a main item
+          const toggle = event.target.closest('[data-accordion-toggle]');
+          if (!toggle) return;
+          const expanded = toggle.getAttribute('aria-expanded') === 'true';
+          toggle.setAttribute('aria-expanded', String(!expanded));
+          document.getElementById(toggle.getAttribute('aria-controls')).hidden = expanded;
+        }, options);
+
+        // Escape key: close with the slide-out animation
+        this.mobileMenu.addEventListener('cancel', (event) => {
+          event.preventDefault();
+          this.closeMobileMenu();
+        }, options);
+      }
+
+      openMobileMenu() {
+        clearTimeout(this.mobileTimer);
+        if (!this.mobileMenu.open) this.mobileMenu.showModal();
+        document.documentElement.classList.add('mobile-menu-open');
+        this.mobileToggle.setAttribute('aria-expanded', 'true');
+        // Two frames so the slide-in transition runs after the dialog is shown
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => this.mobileMenu.classList.add('is-open'));
+        });
+      }
+
+      closeMobileMenu(instant = false) {
+        if (!this.mobileMenu?.open) return;
+        this.mobileMenu.classList.remove('is-open');
+        this.mobileToggle.setAttribute('aria-expanded', 'false');
+
+        const finish = () => {
+          this.mobileMenu.close();
+          document.documentElement.classList.remove('mobile-menu-open');
+        };
+        clearTimeout(this.mobileTimer);
+        if (instant) finish();
+        else this.mobileTimer = setTimeout(finish, 300);
+      }
+    }
+
+    customElements.define('site-header', SiteHeader);
+  }
+{% endjavascript %}
 
 {% schema %}
 {
@@ -328,9 +832,14 @@
       "type": "menu_item",
       "name": "Stavka menija",
       "settings": [
-        { "type": "text", "id": "label", "label": "Naziv", "default": "Link" },
-        { "type": "url", "id": "link", "label": "Link" },
-        { "type": "link_list", "id": "submenu", "label": "Padajući meni (opciono)" }
+        { "type": "text", "id": "label", "label": "Name", "default": "Link" },
+        { "type": "url", "id": "link", "label": "Link", "info": "With a mega menu, used for the \"all\" link inside the menu." },
+        { "type": "header", "content": "Mega menu" },
+        { "type": "link_list", "id": "submenu", "label": "Menu", "info": "Optional. Second level links become columns with a heading. Create menus in Online Store > Navigation." },
+        { "type": "text", "id": "all_label", "label": "All link label", "default": "Shop all", "info": "First link in the mega menu, goes to the Link above. Leave empty to hide." },
+        { "type": "image_picker", "id": "promo_image", "label": "Promo image (optional)" },
+        { "type": "text", "id": "promo_heading", "label": "Promo heading" },
+        { "type": "url", "id": "promo_link", "label": "Promo link", "info": "If empty, uses the Link above." }
       ]
     }
   ]
