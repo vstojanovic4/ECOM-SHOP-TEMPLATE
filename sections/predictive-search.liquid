@@ -116,6 +116,10 @@
     background: #f0f0f0;
   }
   /* Suggestions show the typed part in normal weight and the rest in bold */
+  /* Plain text, so the typed part and the rest of the word stay together */
+  .psearch__option > .psearch__query {
+    display: block;
+  }
   .psearch__query mark {
     background: none;
     color: inherit;
