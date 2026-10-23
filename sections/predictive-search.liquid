@@ -1,0 +1,176 @@
+{% comment %}
+  Live search results for the header search.
+  Rendered only through the Section Rendering API:
+  /search/suggest?q=...&section_id=predictive-search
+{% endcomment %}
+
+{%- liquid
+  assign terms = predictive_search.terms
+  assign queries = predictive_search.resources.queries
+  assign products = predictive_search.resources.products
+  assign collections = predictive_search.resources.collections
+  assign total = queries.size | plus: products.size | plus: collections.size
+-%}
+{%- capture search_all_url -%}{{ routes.search_url }}?q={{ terms | url_encode }}&type=product&options%5Bprefix%5D=last{%- endcapture -%}
+
+<div class="psearch" data-psearch-count="{{ products.size }}">
+  {%- if predictive_search.performed and total > 0 -%}
+
+    {%- if queries.size > 0 -%}
+      <div class="psearch__group" role="group" aria-labelledby="PsearchQueries">
+        <p class="psearch__heading" id="PsearchQueries">Suggestions</p>
+        <ul class="psearch__list" role="presentation">
+          {%- for query in queries -%}
+            <li class="psearch__option" role="option" aria-selected="false">
+              <a class="psearch__query" href="{{ query.url }}&type=product" tabindex="-1">{{ query.styled_text }}</a>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+
+    {%- if products.size > 0 -%}
+      <div class="psearch__group" role="group" aria-labelledby="PsearchProducts">
+        <p class="psearch__heading" id="PsearchProducts">Products</p>
+        <ul class="psearch__list" role="presentation">
+          {%- for product in products -%}
+            <li class="psearch__option" role="option" aria-selected="false">
+              <a class="psearch__product" href="{{ product.url }}" tabindex="-1">
+                <span class="psearch__media">
+                  {%- if product.featured_image -%}
+                    {{ product.featured_image | image_url: width: 120 | image_tag: loading: 'lazy', alt: '', width: 56, height: 56 }}
+                  {%- endif -%}
+                </span>
+                <span class="psearch__info">
+                  <span class="psearch__title">{{ product.title | escape }}</span>
+                  <span class="psearch__price">
+                    {{ product.price | money_without_trailing_zeros }}
+                    {%- if product.compare_at_price > product.price -%}
+                      <s>{{ product.compare_at_price | money_without_trailing_zeros }}</s>
+                    {%- endif -%}
+                  </span>
+                </span>
+              </a>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+
+    {%- if collections.size > 0 -%}
+      <div class="psearch__group" role="group" aria-labelledby="PsearchCollections">
+        <p class="psearch__heading" id="PsearchCollections">Collections</p>
+        <ul class="psearch__list" role="presentation">
+          {%- for collection in collections -%}
+            <li class="psearch__option" role="option" aria-selected="false">
+              <a class="psearch__query" href="{{ collection.url }}" tabindex="-1">{{ collection.title | escape }}</a>
+            </li>
+          {%- endfor -%}
+        </ul>
+      </div>
+    {%- endif -%}
+
+    <ul class="psearch__list psearch__footer" role="presentation">
+      <li class="psearch__option" role="option" aria-selected="false">
+        <a class="psearch__all" href="{{ search_all_url }}" tabindex="-1">
+          Search for “{{ terms | escape }}”
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h16m0 0l-7-7m7 7l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+      </li>
+    </ul>
+
+  {%- else -%}
+    <p class="psearch__message">No results for “{{ terms | escape }}”</p>
+  {%- endif -%}
+</div>
+
+{% stylesheet %}
+  .psearch__group {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  }
+  .psearch__heading {
+    margin: 0;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(0, 0, 0, 0.5);
+  }
+  .psearch__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .psearch__option > a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    color: #000;
+    text-decoration: none;
+  }
+  .psearch__option > a:hover,
+  .psearch__option[aria-selected='true'] > a {
+    background: #f0f0f0;
+  }
+  /* Suggestions show the typed part in normal weight and the rest in bold */
+  .psearch__query mark {
+    background: none;
+    color: inherit;
+  }
+  .psearch__query span {
+    font-weight: 700;
+  }
+  .psearch__media {
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+    border-radius: 10px;
+    background: #f0eeed;
+  }
+  .psearch__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .psearch__info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .psearch__title {
+    overflow: hidden;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .psearch__price {
+    display: flex;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .psearch__price s {
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .psearch__footer .psearch__all {
+    justify-content: space-between;
+    padding: 14px 16px;
+    font-weight: 500;
+  }
+  .psearch__message {
+    margin: 0;
+    padding: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+{% endstylesheet %}
+
+{% schema %}
+{
+  "name": "Predictive search",
+  "settings": []
+}
+{% endschema %}

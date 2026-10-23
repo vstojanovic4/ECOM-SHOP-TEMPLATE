@@ -1,70 +1,424 @@
 {% comment %}
-  This section is used in the search template to render search results for
-  products, articles, and pages.
-
-  https://shopify.dev/docs/storefronts/themes/architecture/templates/search
+  Search results page (/search). Shows products only, with the same card as the category page.
 {% endcomment %}
 
-<h1>{{ 'search.title' | t }}</h1>
+{%- liquid
+  assign s = section.settings
+  assign terms = search.terms | escape
+-%}
 
-<form action="{{ routes.search_url }}" method="get" role="search">
-  <input
-    type="search"
-    size="50"
-    name="q"
-    value="{{ search.terms | escape }}"
-    placeholder="{{ 'search.placeholder' | t }}"
-  >
-  <button type="submit">{{ 'search.submit' | t }}</button>
-</form>
+<div class="srp full-width">
+  <div class="srp__inner">
 
-{% if search.performed %}
-  {% if search.results_count == 0 %}
-    <p>{{ 'search.no_results_html' | t: terms: search.terms }}</p>
-  {% else %}
-    <p>{{ 'search.results_for_html' | t: terms: search.terms, count: search.results_count }}</p>
+    <nav class="srp__breadcrumbs" aria-label="Breadcrumbs">
+      <a href="{{ routes.root_url }}">Home</a>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span aria-current="page">Search</span>
+    </nav>
 
-    <div class="search-results">
-      {% paginate search.results by 20 %}
-        {% # Search result items may be an article, a page, or a product. %}
-        {% for result in search.results %}
-          <div class="search-result">
-            {% assign featured_image = result.featured_image | default: result.image %}
-            {% if featured_image %}
-              {% render 'image', class: 'search-result__image', image: featured_image, url: result.url, width: 400 %}
-            {% endif %}
-            <div class="search-result__content">
-              <p>
-                {{ result.title | link_to: result.url }}
-                {% if result.price %}
-                  {{ result.price | money_with_currency }}
-                {% endif %}
-              </p>
-            </div>
+    <h1 class="srp__title">
+      {%- if search.performed -%}Results for “{{ terms }}”{%- else -%}Search{%- endif -%}
+    </h1>
+
+    <form class="srp__form" action="{{ routes.search_url }}" method="get" role="search">
+      <label class="srp__field">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="11" cy="11" r="7.25" stroke="currentColor" stroke-width="1.8"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span class="visually-hidden">Search for products</span>
+        <input type="search" name="q" value="{{ terms }}" placeholder="Search for products..." autocomplete="off">
+      </label>
+      <input type="hidden" name="type" value="product">
+      <input type="hidden" name="options[prefix]" value="last">
+      <button type="submit" class="srp__submit">Search</button>
+    </form>
+
+    {%- if search.performed -%}
+      {%- paginate search.results by s.products_per_page -%}
+
+        <div class="srp__meta">
+          {%- liquid
+            assign first_item = paginate.current_offset | plus: 1
+            assign last_item = paginate.current_offset | plus: paginate.page_size
+            if last_item > paginate.items
+              assign last_item = paginate.items
+            endif
+          -%}
+          <p class="srp__count">
+            {%- if paginate.items > 0 -%}Showing {{ first_item }}-{{ last_item }} of {{ paginate.items }} Products{%- else -%}0 Products{%- endif -%}
+          </p>
+
+          {%- if s.show_sort and paginate.items > 1 -%}
+            {%- comment -%} Changing the sort reloads the page with the same search {%- endcomment -%}
+            <form class="srp__sort" action="{{ routes.search_url }}" method="get" data-srp-sort>
+              <input type="hidden" name="q" value="{{ terms }}">
+              <input type="hidden" name="type" value="product">
+              <input type="hidden" name="options[prefix]" value="last">
+              <label>
+                Sort by:
+                <select name="sort_by">
+                  {%- assign current_sort = search.sort_by | default: search.default_sort_by -%}
+                  {%- for option in search.sort_options -%}
+                    <option value="{{ option.value }}"{% if option.value == current_sort %} selected{% endif %}>{{ option.name | escape }}</option>
+                  {%- endfor -%}
+                </select>
+              </label>
+              <noscript><button type="submit">Apply</button></noscript>
+            </form>
+          {%- endif -%}
+        </div>
+
+        {%- if search.results_count > 0 -%}
+          <ul class="srp__grid" role="list">
+            {%- for item in search.results -%}
+              {%- if item.object_type == 'product' -%}
+                <li>{% render 'product-card', product: item %}</li>
+              {%- endif -%}
+            {%- endfor -%}
+          </ul>
+        {%- else -%}
+          <div class="srp__empty">
+            <p class="srp__empty-title">No results for “{{ terms }}”</p>
+            <p>Check the spelling or try a different word.</p>
+            <a class="srp__button" href="{{ routes.all_products_collection_url }}">Continue shopping</a>
           </div>
-        {% endfor %}
+        {%- endif -%}
 
-        {{ paginate | default_pagination }}
-      {% endpaginate %}
-    </div>
-  {% endif %}
-{% endif %}
+        {%- if paginate.pages > 1 -%}
+          <nav class="srp__pagination" aria-label="Pagination">
+            {%- if paginate.previous -%}
+              <a class="srp__page-btn" href="{{ paginate.previous.url }}">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H4m0 0l5-5m-5 5l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Previous
+              </a>
+            {%- else -%}
+              <span class="srp__page-btn is-disabled">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16 10H4m0 0l5-5m-5 5l5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Previous
+              </span>
+            {%- endif -%}
+
+            <ul class="srp__pages" role="list">
+              {%- for part in paginate.parts -%}
+                <li>
+                  {%- if part.is_link -%}
+                    <a class="srp__page" href="{{ part.url }}">{{ part.title }}</a>
+                  {%- elsif part.title == paginate.current_page -%}
+                    <span class="srp__page is-current" aria-current="page">{{ part.title }}</span>
+                  {%- else -%}
+                    <span class="srp__page">{{ part.title }}</span>
+                  {%- endif -%}
+                </li>
+              {%- endfor -%}
+            </ul>
+
+            {%- if paginate.next -%}
+              <a class="srp__page-btn" href="{{ paginate.next.url }}">
+                Next
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </a>
+            {%- else -%}
+              <span class="srp__page-btn is-disabled">
+                Next
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m0 0l-5-5m5 5l-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </span>
+            {%- endif -%}
+          </nav>
+        {%- endif -%}
+
+      {%- endpaginate -%}
+    {%- else -%}
+      <p class="srp__hint">Type a product name to start searching.</p>
+    {%- endif -%}
+
+  </div>
+</div>
 
 {% stylesheet %}
-  .search-results {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  .srp__inner {
+    width: min(1240px, 100% - 32px);
+    margin: 0 auto;
+    padding: 24px 0 80px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    color: #000;
   }
-  .search-results .prev,
-  .search-results .page,
-  .search-results .next {
-    grid-column: 1 / -1;
+  .srp .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .srp :focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 3px;
+  }
+
+  /* Breadcrumbs */
+  .srp__breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 24px;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .srp__breadcrumbs a {
+    color: inherit;
+    text-decoration: none;
+  }
+  .srp__breadcrumbs svg {
+    width: 16px;
+    height: 16px;
+    margin: 0 4px;
+  }
+  .srp__breadcrumbs [aria-current] {
+    color: #000;
+  }
+
+  .srp__title {
+    margin: 0 0 24px;
+    font-family: var(--font-heading);
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+  }
+
+  /* Search form */
+  .srp__form {
+    display: flex;
+    gap: 12px;
+    max-width: 640px;
+    margin-bottom: 32px;
+  }
+  .srp__field {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 12px;
+    height: 52px;
+    padding: 0 16px;
+    background: #f0f0f0;
+    border-radius: 62px;
+    color: rgba(0, 0, 0, 0.4);
+  }
+  .srp__field:focus-within {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+  .srp__field svg {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+  }
+  .srp__field input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    outline: none;
+    color: #000;
+    font: inherit;
+    font-size: 16px;
+  }
+  .srp__field input:focus-visible {
+    outline: none;
+  }
+  .srp__submit,
+  .srp__button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 52px;
+    padding: 0 32px;
+    border: 0;
+    border-radius: 62px;
+    background: #000;
+    color: #fff;
+    font: inherit;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  /* Count + sort */
+  .srp__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .srp__count {
+    margin: 0;
+  }
+  .srp__sort label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  .srp__sort select {
+    padding: 0 20px 0 0;
+    border: 0;
+    background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right center / 16px no-repeat;
+    color: #000;
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Product grid */
+  .srp__grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 36px 20px;
+    margin: 0;
+    padding: 0 0 32px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    list-style: none;
+  }
+
+  /* Empty states */
+  .srp__empty,
+  .srp__hint {
+    padding: 60px 0;
+    color: rgba(0, 0, 0, 0.6);
+    text-align: center;
+  }
+  .srp__empty p {
+    margin: 0 0 8px;
+  }
+  .srp__empty-title {
+    color: #000;
+    font-size: 20px;
+    font-weight: 700;
+  }
+  .srp__empty .srp__button {
+    margin-top: 16px;
+  }
+
+  /* Pagination */
+  .srp__pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-top: 20px;
+  }
+  .srp__page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    color: #000;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .srp__page-btn svg {
+    width: 20px;
+    height: 20px;
+  }
+  .srp__page-btn.is-disabled {
+    opacity: 0.4;
+  }
+  .srp__pages {
+    display: flex;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .srp__page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    color: rgba(0, 0, 0, 0.5);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+  }
+  .srp__page.is-current {
+    background: rgba(0, 0, 0, 0.06);
+    color: #000;
+  }
+
+  @media (max-width: 989px) {
+    .srp__inner {
+      padding-bottom: 50px;
+    }
+    .srp__breadcrumbs {
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+    .srp__title {
+      font-size: 28px;
+    }
+    .srp__form {
+      margin-bottom: 24px;
+    }
+    .srp__submit {
+      padding: 0 20px;
+    }
+    .srp__meta {
+      font-size: 14px;
+    }
+    .srp__grid {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px 14px;
+      padding-bottom: 24px;
+    }
+    .srp__page-btn {
+      padding: 0 10px;
+      font-size: 12px;
+    }
+    .srp__page {
+      min-width: 32px;
+      height: 32px;
+      font-size: 12px;
+    }
   }
 {% endstylesheet %}
 
+{% javascript %}
+  // Sort: apply right away when a new option is picked
+  document.addEventListener('change', (event) => {
+    const select = event.target.closest('[data-srp-sort] select');
+    if (select) select.form.requestSubmit();
+  });
+{% endjavascript %}
+
 {% schema %}
 {
-  "name": "t:general.search",
-  "settings": []
+  "name": "Search results",
+  "settings": [
+    {
+      "type": "range",
+      "id": "products_per_page",
+      "label": "Products per page",
+      "min": 8,
+      "max": 48,
+      "step": 4,
+      "default": 16
+    },
+    {
+      "type": "checkbox",
+      "id": "show_sort",
+      "label": "Show sorting",
+      "default": true
+    }
+  ]
 }
 {% endschema %}

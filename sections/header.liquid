@@ -18,14 +18,32 @@
   <svg class="header-svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
 {%- endcapture -%}
 
+{%- comment -%} Rendered twice (desktop + mobile), __ID__ keeps the ids unique {%- endcomment -%}
 {%- capture search_form -%}
-  <form action="{{ routes.search_url }}" method="get" role="search" class="header-search">
-    <label class="header-search__field">
-      {{ icon_search }}
-      <span class="visually-hidden">{{ section.settings.search_placeholder | escape }}</span>
-      <input type="search" name="q" value="{{ search.terms | escape }}" placeholder="{{ section.settings.search_placeholder | escape }}">
-    </label>
-  </form>
+  <predictive-search class="header-search-wrap" data-url="{{ routes.predictive_search_url }}">
+    <form action="{{ routes.search_url }}" method="get" role="search" class="header-search">
+      <label class="header-search__field">
+        {{ icon_search }}
+        <span class="visually-hidden">{{ section.settings.search_placeholder | escape }}</span>
+        <input
+          type="search"
+          name="q"
+          value="{{ search.terms | escape }}"
+          placeholder="{{ section.settings.search_placeholder | escape }}"
+          role="combobox"
+          aria-expanded="false"
+          aria-controls="PredictiveSearch-__ID__"
+          aria-autocomplete="list"
+          autocomplete="off"
+          data-predictive-input
+        >
+      </label>
+      <input type="hidden" name="type" value="product">
+      <input type="hidden" name="options[prefix]" value="last">
+      <div class="predictive-search" id="PredictiveSearch-__ID__" role="listbox" aria-label="Search suggestions" data-predictive-results hidden></div>
+      <span class="visually-hidden" role="status" aria-live="polite" data-predictive-status></span>
+    </form>
+  </predictive-search>
 {%- endcapture -%}
 
 <site-header
@@ -127,13 +145,13 @@
       </nav>
 
       {%- comment -%} Search (desktop) {%- endcomment -%}
-      <div class="header-search-desktop">{{ search_form }}</div>
+      <div class="header-search-desktop">{{ search_form | replace: '__ID__', 'desktop' }}</div>
 
       {%- comment -%} Icons {%- endcomment -%}
       <div class="header-icons">
         <details class="header-search-mobile" data-header-details>
           <summary class="header-icon" aria-label="Search">{{ icon_search }}</summary>
-          <div class="header-search-mobile__panel">{{ search_form }}</div>
+          <div class="header-search-mobile__panel">{{ search_form | replace: '__ID__', 'mobile' }}</div>
         </details>
 
         <a href="{{ routes.cart_url }}" class="header-icon" aria-label="Cart"{% if settings.cart_type == 'drawer' %} aria-haspopup="dialog" data-cart-drawer-toggle{% endif %}>
@@ -437,6 +455,36 @@
     outline: 2px solid #000;
     outline-offset: 2px;
   }
+  /* The field already shows the focus ring, so the input itself does not need one */
+  .site-header .header-search__field input:focus-visible {
+    outline: none;
+  }
+
+  /* Live search dropdown */
+  .header-search-wrap {
+    position: relative;
+    display: block;
+  }
+  .predictive-search {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    z-index: 25;
+    max-height: min(70vh, 560px);
+    overflow-y: auto;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+    color: #000;
+  }
+  .predictive-search[hidden] {
+    display: none;
+  }
+  .predictive-search[aria-busy='true'] .psearch {
+    opacity: 0.5;
+  }
 
   /* Icons */
   .header-icons {
@@ -651,6 +699,13 @@
       background: var(--header-bg);
       border-bottom: 1px solid rgba(0, 0, 0, 0.1);
     }
+    /* On mobile the results sit right under the field instead of floating */
+    .header-search-mobile__panel .predictive-search {
+      position: static;
+      margin-top: 8px;
+      max-height: 60vh;
+      box-shadow: none;
+    }
   }
 {% endstylesheet %}
 
@@ -815,6 +870,175 @@
 
     customElements.define('site-header', SiteHeader);
   }
+
+  if (!customElements.get('predictive-search')) {
+    class PredictiveSearch extends HTMLElement {
+      connectedCallback() {
+        this.abort = new AbortController();
+        const options = { signal: this.abort.signal };
+
+        this.input = this.querySelector('[data-predictive-input]');
+        this.results = this.querySelector('[data-predictive-results]');
+        this.status = this.querySelector('[data-predictive-status]');
+        this.cache = new Map();
+        this.activeIndex = -1;
+
+        // Wait until the user stops typing before asking the server
+        this.input.addEventListener('input', () => {
+          clearTimeout(this.debounceTimer);
+          this.debounceTimer = setTimeout(() => this.search(this.term), 300);
+        }, options);
+
+        // Coming back to the field shows the last results again
+        this.input.addEventListener('focus', () => {
+          if (this.term.length >= 2) this.search(this.term);
+        }, options);
+
+        this.input.addEventListener('keydown', (event) => this.onKeydown(event), options);
+
+        // Keep focus in the field while clicking a result (Safari would blur it and close the list first)
+        this.results.addEventListener('mousedown', (event) => event.preventDefault(), options);
+
+        // Close when focus or a click leaves the search
+        this.addEventListener('focusout', (event) => {
+          if (!this.contains(event.relatedTarget)) this.close();
+        }, options);
+        document.addEventListener('click', (event) => {
+          if (!this.contains(event.target)) this.close();
+        }, options);
+      }
+
+      disconnectedCallback() {
+        this.abort?.abort();
+        this.request?.abort();
+        clearTimeout(this.debounceTimer);
+      }
+
+      get term() {
+        return this.input.value.trim();
+      }
+
+      get options() {
+        return [...this.results.querySelectorAll('[role="option"]')];
+      }
+
+      async search(term) {
+        if (term.length < 2) {
+          this.close();
+          return;
+        }
+        if (this.cache.has(term)) {
+          this.render(this.cache.get(term));
+          return;
+        }
+
+        // A newer search cancels the older one, so late results never replace fresh ones
+        this.request?.abort();
+        this.request = new AbortController();
+        this.results.setAttribute('aria-busy', 'true');
+        if (this.results.hidden) {
+          this.results.innerHTML = '<p class="psearch__message">Loading…</p>';
+          this.open();
+        }
+
+        const params = new URLSearchParams({
+          q: term,
+          section_id: 'predictive-search',
+          'resources[type]': 'query,product,collection',
+          'resources[limit]': '4',
+          'resources[options][unavailable_products]': 'last',
+        });
+
+        try {
+          const response = await fetch(`${this.dataset.url}?${params}`, { signal: this.request.signal });
+          if (!response.ok) throw new Error(response.status);
+          const html = new DOMParser().parseFromString(await response.text(), 'text/html');
+          const markup = html.querySelector('.psearch')?.outerHTML || '';
+          this.cache.set(term, markup);
+          if (term === this.term) this.render(markup);
+        } catch (error) {
+          if (error.name === 'AbortError') return;
+          this.results.innerHTML = '<p class="psearch__message">Search is not available right now.</p>';
+        } finally {
+          this.results.removeAttribute('aria-busy');
+        }
+      }
+
+      render(markup) {
+        this.results.innerHTML = markup;
+        this.activeIndex = -1;
+        this.input.removeAttribute('aria-activedescendant');
+
+        // Desktop and mobile both render results, so prefix the ids to keep them unique
+        this.results.querySelectorAll('[aria-labelledby]').forEach((group) => {
+          const heading = group.querySelector(`#${group.getAttribute('aria-labelledby')}`);
+          if (!heading) return;
+          heading.id = `${this.results.id}-${heading.id}`;
+          group.setAttribute('aria-labelledby', heading.id);
+        });
+        // Options need ids for aria-activedescendant
+        this.options.forEach((option, index) => {
+          option.id = `${this.results.id}-option-${index}`;
+        });
+
+        const count = Number(this.results.querySelector('[data-psearch-count]')?.dataset.psearchCount || 0);
+        this.status.textContent = count === 1 ? '1 product found' : `${count} products found`;
+        this.open();
+      }
+
+      open() {
+        this.results.hidden = false;
+        this.input.setAttribute('aria-expanded', 'true');
+      }
+
+      close() {
+        clearTimeout(this.debounceTimer);
+        this.results.hidden = true;
+        this.input.setAttribute('aria-expanded', 'false');
+        this.input.removeAttribute('aria-activedescendant');
+        this.setActive(-1);
+      }
+
+      setActive(index) {
+        const options = this.options;
+        options.forEach((option, i) => option.setAttribute('aria-selected', i === index ? 'true' : 'false'));
+        this.activeIndex = index;
+        if (index < 0) return;
+        this.input.setAttribute('aria-activedescendant', options[index].id);
+        options[index].scrollIntoView({ block: 'nearest' });
+      }
+
+      onKeydown(event) {
+        const options = this.options;
+
+        switch (event.key) {
+          case 'ArrowDown':
+          case 'ArrowUp': {
+            if (this.results.hidden || !options.length) return;
+            event.preventDefault();
+            const step = event.key === 'ArrowDown' ? 1 : -1;
+            this.setActive((this.activeIndex + step + options.length) % options.length);
+            break;
+          }
+          case 'Enter':
+            // Enter on a highlighted result opens it, otherwise the form goes to the search page
+            if (this.results.hidden || this.activeIndex < 0) return;
+            event.preventDefault();
+            options[this.activeIndex].querySelector('a')?.click();
+            break;
+          case 'Escape':
+            // Stop the browser from clearing the field, only close the results
+            if (this.results.hidden) return;
+            event.preventDefault();
+            event.stopPropagation();
+            this.close();
+            break;
+        }
+      }
+    }
+
+    customElements.define('predictive-search', PredictiveSearch);
+  }
 {% endjavascript %}
 
 {% schema %}
@@ -823,7 +1047,7 @@
   "settings": [
     { "type": "text", "id": "logo_text", "label": "Tekst loga", "default": "SHOP.CO" },
     { "type": "image_picker", "id": "logo", "label": "Logo slika (opciono)", "info": "Ako dodaš sliku, ona se prikazuje umesto teksta." },
-    { "type": "text", "id": "search_placeholder", "label": "Tekst u pretrazi", "default": "Search for products..." },
+    { "type": "text", "id": "search_placeholder", "label": "Search placeholder", "default": "Search for products..." },
     { "type": "color", "id": "bg_color", "label": "Pozadina", "default": "#ffffff" },
     { "type": "color", "id": "text_color", "label": "Boja teksta", "default": "#000000" }
   ],
