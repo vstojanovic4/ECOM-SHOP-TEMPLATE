@@ -1,0 +1,157 @@
+{%- if section.blocks.size > 0 -%}
+{%- liquid
+  assign s = section.settings
+  assign bg_alpha = s.bg_opacity | divided_by: 100.0
+  assign bg = s.bg_color | color_modify: 'alpha', bg_alpha
+-%}
+
+{{ 'logo-marquee.css' | asset_url | stylesheet_tag }}
+<script src="{{ 'logo-marquee.js' | asset_url }}" defer></script>
+
+<logo-marquee
+  class="logo-marquee full-width"
+  data-speed="{{ s.speed }}"
+  data-direction="{{ s.direction }}"
+  style="
+    --lm-bg: {{ bg }};
+    --lm-height: {{ s.bar_height }}px;
+    --lm-logo-height: {{ s.logo_height }}px;
+  "
+>
+  <div class="logo-marquee__track" data-track>
+    <ul class="logo-marquee__list" role="list" data-list>
+      {%- for block in section.blocks -%}
+        {%- assign image = block.settings.image -%}
+        <li class="logo-marquee__item" {{ block.shopify_attributes }}>
+          {%- if image != blank -%}
+            {%- liquid
+              assign logo_width = s.logo_height | times: image.aspect_ratio | ceil
+              assign logo_sizes = logo_width | append: 'px'
+            -%}
+            {{
+              image
+              | image_url: width: 600
+              | image_tag:
+                widths: '150, 300, 450, 600',
+                sizes: logo_sizes,
+                width: logo_width,
+                height: s.logo_height,
+                loading: 'lazy',
+                alt: image.alt,
+                class: 'logo-marquee__logo'
+            }}
+          {%- else -%}
+            {{ 'image' | placeholder_svg_tag: 'logo-marquee__logo logo-marquee__placeholder' }}
+          {%- endif -%}
+        </li>
+      {%- endfor -%}
+    </ul>
+  </div>
+</logo-marquee>
+{%- endif -%}
+
+{% schema %}
+{
+  "name": "Logo marquee",
+  "tag": "section",
+  "class": "logo-marquee-section",
+  "settings": [
+    {
+      "type": "header",
+      "content": "Animation"
+    },
+    {
+      "type": "range",
+      "id": "speed",
+      "label": "Speed",
+      "min": 10,
+      "max": 200,
+      "step": 5,
+      "unit": "px",
+      "info": "Pixels per second.",
+      "default": 50
+    },
+    {
+      "type": "select",
+      "id": "direction",
+      "label": "Direction",
+      "options": [
+        { "value": "left", "label": "Right to left" },
+        { "value": "right", "label": "Left to right" }
+      ],
+      "default": "left"
+    },
+    {
+      "type": "header",
+      "content": "Size"
+    },
+    {
+      "type": "range",
+      "id": "bar_height",
+      "label": "Bar height",
+      "min": 40,
+      "max": 300,
+      "step": 5,
+      "unit": "px",
+      "default": 100
+    },
+    {
+      "type": "range",
+      "id": "logo_height",
+      "label": "Logo height",
+      "min": 20,
+      "max": 150,
+      "step": 2,
+      "unit": "px",
+      "default": 50
+    },
+    {
+      "type": "header",
+      "content": "Background"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background color",
+      "default": "#000000"
+    },
+    {
+      "type": "range",
+      "id": "bg_opacity",
+      "label": "Background opacity",
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%",
+      "info": "0% = transparent.",
+      "default": 0
+    }
+  ],
+  "blocks": [
+    {
+      "type": "logo",
+      "name": "Logo",
+      "settings": [
+        {
+          "type": "image_picker",
+          "id": "image",
+          "label": "Brand logo",
+          "info": "PNG or SVG with transparent background. Add alt text to the image for screen readers."
+        }
+      ]
+    }
+  ],
+  "presets": [
+    {
+      "name": "Logo marquee",
+      "blocks": [
+        { "type": "logo" },
+        { "type": "logo" },
+        { "type": "logo" },
+        { "type": "logo" },
+        { "type": "logo" }
+      ]
+    }
+  ]
+}
+{% endschema %}

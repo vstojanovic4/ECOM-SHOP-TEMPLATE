@@ -133,25 +133,25 @@
 
 {% schema %}
 {
-  "name": "Stilovi (Dress Style)",
+  "name": "Dress styles",
   "settings": [
-    { "type": "textarea", "id": "heading", "label": "Naslov", "default": "Browse by dress style", "info": "Enter = novi red." },
-    { "type": "color", "id": "bg_color", "label": "Pozadina kartice", "default": "#f0f0f0" }
+    { "type": "textarea", "id": "heading", "label": "Heading", "default": "Browse by dress style", "info": "Press Enter for a new line." },
+    { "type": "color", "id": "bg_color", "label": "Card background", "default": "#f0f0f0" }
   ],
   "blocks": [
     {
       "type": "style",
-      "name": "Stil",
+      "name": "Style",
       "settings": [
-        { "type": "text", "id": "label", "label": "Naziv", "default": "Casual" },
-        { "type": "image_picker", "id": "image", "label": "Slika", "info": "Osoba treba da bude u desnom delu slike, levo ostaje mesto za natpis." },
-        { "type": "url", "id": "link", "label": "Link", "info": "Npr. kolekcija tog stila." }
+        { "type": "text", "id": "label", "label": "Name", "default": "Casual" },
+        { "type": "image_picker", "id": "image", "label": "Image", "info": "Keep the person on the right side of the image; the left side is for the title." },
+        { "type": "url", "id": "link", "label": "Link", "info": "E.g. the collection for this style." }
       ]
     }
   ],
   "presets": [
     {
-      "name": "Stilovi (Dress Style)",
+      "name": "Dress styles",
       "blocks": [
         { "type": "style", "settings": { "label": "Casual" } },
         { "type": "style", "settings": { "label": "Formal" } },

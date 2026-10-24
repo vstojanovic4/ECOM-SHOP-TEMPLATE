@@ -1,0 +1,185 @@
+{% comment %}
+  Free shipping progress bar, used by the cart drawer and the cart page.
+  It only shows a message: real free shipping must also be set in
+  Settings > Shipping and delivery (rate with a minimum order price).
+
+  Usage:
+  {% render 'free-shipping-bar', threshold: 200, text: "You're [amount] away from free shipping!", success_text: "You've got free shipping!", popup_text: "Congratulations! You've got free shipping!", color: '#000000' %}
+
+  - threshold: amount in the store currency (e.g. 200 = $200)
+  - text: [amount] is replaced with the remaining amount
+  - popup_text: optional, shown in a popup at the moment the threshold is reached
+{% endcomment %}
+
+{%- liquid
+  assign threshold_cents = threshold | times: 100
+  assign remaining = threshold_cents | minus: cart.total_price
+  assign progress = 100
+  assign reached = true
+  if remaining > 0
+    assign progress = cart.total_price | times: 100 | divided_by: threshold_cents
+    assign reached = false
+  endif
+-%}
+
+{%- if threshold_cents > 0 -%}
+  <div
+    class="free-shipping"
+    style="--fs-color: {{ color | default: '#000000' }}; --fs-progress: {{ progress }}%;"
+    data-free-shipping
+    data-reached="{{ reached }}"
+    {% if popup_text != blank %}
+      data-popup-text="{{ popup_text | escape }}"
+    {% endif %}
+  >
+    <p class="free-shipping__text">
+      {%- if remaining > 0 -%}
+        {%- assign remaining_money = remaining | money_without_trailing_zeros -%}
+        {{- text | escape | replace: '[amount]', remaining_money -}}
+      {%- else -%}
+        {{- success_text | escape -}}
+      {%- endif -%}
+    </p>
+    <div
+      class="free-shipping__bar"
+      role="progressbar"
+      aria-label="Free shipping progress"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow="{{ progress }}"
+    >
+      <span class="free-shipping__fill"></span>
+    </div>
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .free-shipping__text {
+    margin: 0 0 8px;
+    font-size: 14px;
+    color: #000;
+  }
+  .free-shipping__bar {
+    height: 8px;
+    overflow: hidden;
+    border-radius: 62px;
+    background: #f0f0f0;
+  }
+  .free-shipping__fill {
+    display: block;
+    width: var(--fs-progress);
+    height: 100%;
+    border-radius: inherit;
+    background: var(--fs-color);
+    transition: width 0.4s ease;
+  }
+  /* Popup when the threshold is reached (a popover, so it shows above the open drawer) */
+  .free-shipping-toast {
+    position: fixed;
+    inset: 24px auto auto 50%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: max-content;
+    max-width: calc(100% - 32px);
+    margin: 0;
+    padding: 14px 24px;
+    border: 0;
+    border-radius: 62px;
+    background: #000;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 500;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.2);
+    transform: translateX(-50%);
+  }
+  .free-shipping-toast:popover-open {
+    animation: free-shipping-toast-in 0.35s ease;
+  }
+  .free-shipping-toast svg {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+  }
+  @keyframes free-shipping-toast-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -12px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .free-shipping__fill {
+      transition: none;
+    }
+    .free-shipping-toast:popover-open {
+      animation: none;
+    }
+  }
+{% endstylesheet %}
+
+{% javascript %}
+  (() => {
+    if (window.freeShippingPopup) return;
+    window.freeShippingPopup = true;
+
+    // null = not known yet (first check on page load only remembers the state)
+    let reached = null;
+    let hideTimer;
+    let scheduled = false;
+
+    const showPopup = (text) => {
+      let toast = document.getElementById('FreeShippingToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'FreeShippingToast';
+        toast.className = 'free-shipping-toast';
+        toast.setAttribute('popover', 'manual');
+        toast.setAttribute('role', 'status');
+        toast.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><span></span>';
+        document.body.append(toast);
+      }
+      toast.querySelector('span').textContent = text;
+
+      if (typeof toast.showPopover !== 'function') return;
+      if (toast.matches(':popover-open')) toast.hidePopover();
+      toast.showPopover();
+
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(() => {
+        if (toast.matches(':popover-open')) toast.hidePopover();
+      }, 10000);
+    };
+
+    // The cart drawer and cart page replace their HTML after every change,
+    // so compare the bar state before and after each DOM update
+    const check = () => {
+      scheduled = false;
+      const bar = document.querySelector('[data-free-shipping]');
+      if (!bar) {
+        // Empty cart (no bar): reaching the threshold again should show the popup
+        if (reached !== null) reached = false;
+        return;
+      }
+
+      const now = bar.dataset.reached === 'true';
+      if (reached === false && now && bar.dataset.popupText) showPopup(bar.dataset.popupText);
+      reached = now;
+    };
+
+    const start = () => {
+      check();
+      new MutationObserver(() => {
+        if (scheduled) return;
+        scheduled = true;
+        requestAnimationFrame(check);
+      }).observe(document.body, { childList: true, subtree: true });
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
+    }
+  })();
+{% endjavascript %}

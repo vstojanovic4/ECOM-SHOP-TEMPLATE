@@ -79,5 +79,21 @@
         "default": 4
       }
     ]
+  },
+  {
+    "name": "Cart",
+    "settings": [
+      {
+        "type": "select",
+        "id": "cart_type",
+        "label": "Cart type",
+        "options": [
+          { "value": "drawer", "label": "Drawer" },
+          { "value": "page", "label": "Page (/cart)" }
+        ],
+        "default": "drawer",
+        "info": "Drawer: add to cart and the cart icon open the drawer. Page: they go to /cart."
+      }
+    ]
   }
 ]

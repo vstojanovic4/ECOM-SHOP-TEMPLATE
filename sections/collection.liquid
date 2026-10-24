@@ -1045,17 +1045,17 @@
 {
   "name": "t:general.collection",
   "settings": [
-    { "type": "range", "id": "products_per_page", "label": "Proizvoda po strani", "min": 3, "max": 24, "step": 3, "default": 9 },
-    { "type": "link_list", "id": "category_menu", "label": "Meni kategorija (gore u filterima)", "info": "Opciono. Ako je prazno, kategorije su tagovi proizvoda koji nisu stilovi (T-Shirt, Jeans...)." },
-    { "type": "text", "id": "style_tags", "label": "Tagovi koji su stilovi", "default": "Casual,Formal,Party,Gym", "info": "Odvojeni zarezom. Ovi tagovi idu u grupu Dress Style, ostali tagovi su kategorije na vrhu." },
-    { "type": "text", "id": "style_label", "label": "Naslov za stilove", "default": "Dress Style" },
-    { "type": "text", "id": "colors_label", "label": "Naslov za boje", "default": "Colors" },
-    { "type": "text", "id": "size_label", "label": "Naslov za veličine", "default": "Size" },
-    { "type": "checkbox", "id": "show_availability", "label": "Prikaži filter dostupnosti (In stock)", "default": false },
-    { "type": "text", "id": "filters_label", "label": "Naslov filtera", "default": "Filters" },
-    { "type": "text", "id": "apply_label", "label": "Dugme za filtere", "default": "Apply Filter" },
-    { "type": "text", "id": "clear_label", "label": "Link za brisanje filtera", "default": "Clear all" },
-    { "type": "text", "id": "empty_text", "label": "Tekst kad nema proizvoda", "default": "No products found." }
+    { "type": "range", "id": "products_per_page", "label": "Products per page", "min": 3, "max": 24, "step": 3, "default": 9 },
+    { "type": "link_list", "id": "category_menu", "label": "Category menu (top of filters)", "info": "Optional. If empty, categories are product tags that are not styles (T-Shirt, Jeans...)." },
+    { "type": "text", "id": "style_tags", "label": "Style tags", "default": "Casual,Formal,Party,Gym", "info": "Comma separated. These tags go to the Dress Style group, other tags are categories at the top." },
+    { "type": "text", "id": "style_label", "label": "Styles heading", "default": "Dress Style" },
+    { "type": "text", "id": "colors_label", "label": "Colors heading", "default": "Colors" },
+    { "type": "text", "id": "size_label", "label": "Sizes heading", "default": "Size" },
+    { "type": "checkbox", "id": "show_availability", "label": "Show availability filter (In stock)", "default": false },
+    { "type": "text", "id": "filters_label", "label": "Filters heading", "default": "Filters" },
+    { "type": "text", "id": "apply_label", "label": "Filters button", "default": "Apply Filter" },
+    { "type": "text", "id": "clear_label", "label": "Clear filters link", "default": "Clear all" },
+    { "type": "text", "id": "empty_text", "label": "No products text", "default": "No products found." }
   ]
 }
 {% endschema %}
