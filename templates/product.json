@@ -24,7 +24,12 @@
       "blocks": {
         "judgeme-review-widget": {
           "type": "shopify://apps/judge-me-reviews/blocks/review_widget/61ccd3b1-a9f2-4160-9fe9-4fec8413e5d8",
-          "settings": {}
+          "settings": {
+            "review_data": "sample_data",
+            "max_width": 1200,
+            "show_shop_reviews": false,
+            "empty_state": "empty_widget"
+          }
         },
         "faq-size": {
           "type": "faq",
@@ -73,11 +78,16 @@
         "button_link": "",
         "show_divider": false
       }
+    },
+    "1793178654a90fa202": {
+      "type": "apps",
+      "settings": {}
     }
   },
   "order": [
     "main",
     "product-tabs",
-    "you-might-also-like"
+    "you-might-also-like",
+    "1793178654a90fa202"
   ]
 }

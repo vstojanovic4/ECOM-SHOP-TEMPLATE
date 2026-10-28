@@ -1,0 +1,81 @@
+{% comment %}
+  Subscription picker for one cart line (cart drawer and cart page).
+  Shown only when the product has a selling plan (Shopify Subscriptions app).
+  Usage: {% render 'cart-selling-plan', item: item, line: line, id_prefix: 'CartDrawerPlan' %}
+{% endcomment %}
+
+{%- if item.variant.selling_plan_allocations.size > 0 -%}
+  {%- liquid
+    assign current_plan_id = item.selling_plan_allocation.selling_plan.id
+    assign max_saving = 0
+    for allocation in item.variant.selling_plan_allocations
+      assign adjustment = allocation.selling_plan.price_adjustments.first
+      if adjustment.value_type == 'percentage' and adjustment.value > max_saving
+        assign max_saving = adjustment.value
+      endif
+    endfor
+    # Drawer and cart page can be on the same page, so each passes its own prefix
+    assign select_id = id_prefix | default: 'CartPlan' | append: '-' | append: item.key | handleize
+  -%}
+  <div class="cart-plan">
+    <label class="cart-plan__label" for="{{ select_id }}">
+      {%- if current_plan_id -%}
+        Subscription
+      {%- elsif max_saving > 0 -%}
+        Subscribe &amp; save up to {{ max_saving }}%
+      {%- else -%}
+        Subscribe &amp; save
+      {%- endif -%}
+    </label>
+    <select
+      class="cart-plan__select"
+      id="{{ select_id }}"
+      data-cart-plan
+      data-line="{{ line }}"
+      data-quantity="{{ item.quantity }}"
+    >
+      {%- unless item.product.requires_selling_plan -%}
+        <option value=""{% unless current_plan_id %} selected{% endunless %}>One-time purchase</option>
+      {%- endunless -%}
+      {%- for allocation in item.variant.selling_plan_allocations -%}
+        <option value="{{ allocation.selling_plan.id }}"{% if allocation.selling_plan.id == current_plan_id %} selected{% endif %}>
+          {{- allocation.selling_plan.name | escape -}}
+        </option>
+      {%- endfor -%}
+    </select>
+  </div>
+{%- endif -%}
+
+{% stylesheet %}
+  .cart-plan {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-top: 6px;
+  }
+  .cart-plan__label {
+    color: #f33;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .cart-plan__select {
+    max-width: 100%;
+    height: 32px;
+    padding: 0 32px 0 14px;
+    border: 0;
+    border-radius: 62px;
+    background: #f0f0f0 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 6l4 4 4-4' fill='none' stroke='black' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") right 12px center / 14px no-repeat;
+    color: #000;
+    font: inherit;
+    font-size: 12px;
+    text-overflow: ellipsis;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .cart-plan__select:focus-visible {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+{% endstylesheet %}

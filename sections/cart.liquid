@@ -71,10 +71,19 @@
                   </dl>
                 {%- endunless -%}
 
+                {% render 'cart-selling-plan', item: item, line: line, id_prefix: 'CartPagePlan' %}
+
+                {%- liquid
+                  # A subscription discount is part of the price, so compare with the regular price
+                  assign compare_line = item.original_line_price
+                  if item.selling_plan_allocation.compare_at_price > item.selling_plan_allocation.price
+                    assign compare_line = item.selling_plan_allocation.compare_at_price | times: item.quantity
+                  endif
+                -%}
                 <div class="cart-item__bottom">
                   <div class="cart-item__price">
-                    {%- if item.original_line_price > item.final_line_price -%}
-                      <s>{{ item.original_line_price | money_without_trailing_zeros }}</s>
+                    {%- if compare_line > item.final_line_price -%}
+                      <s>{{ compare_line | money_without_trailing_zeros }}</s>
                     {%- endif -%}
                     <span>{{ item.final_line_price | money_without_trailing_zeros }}</span>
                   </div>
@@ -593,20 +602,38 @@
   // Slušamo na nivou dokumenta, jer se HTML korpe menja posle svake izmene
 
   // + / − / kanta: Section Rendering API (bez osvežavanja strane)
-  document.addEventListener('click', async (event) => {
+  document.addEventListener('click', (event) => {
     const link = event.target.closest('[data-cart-change]');
     if (!link) return;
     const cart = link.closest('[data-cart]');
     if (!cart) return;
     event.preventDefault();
-    if (cart.getAttribute('aria-busy') === 'true') return;
 
-    const sectionId = cart.dataset.sectionId;
     const line = Number(link.dataset.line);
-    const quantity = Number(link.dataset.quantity);
     const focusSelector = link.classList.contains('cart-item__remove')
       ? null
       : `[data-cart-change][data-line="${line}"][aria-label="${link.getAttribute('aria-label')}"]`;
+    cartPageChange(cart, { line, quantity: Number(link.dataset.quantity) }, focusSelector, link.href);
+  });
+
+  // Subscription picker: one-time purchase <-> selling plan (an empty value removes the plan)
+  document.addEventListener('change', (event) => {
+    const select = event.target.closest('[data-cart-plan]');
+    const cart = select?.closest('[data-cart]');
+    if (!cart) return;
+
+    const line = Number(select.dataset.line);
+    cartPageChange(
+      cart,
+      { line, quantity: Number(select.dataset.quantity), selling_plan: select.value || null },
+      `[data-cart-plan][data-line="${line}"]`,
+    );
+  });
+
+  async function cartPageChange(cart, change, focusSelector, fallbackUrl) {
+    if (cart.getAttribute('aria-busy') === 'true') return;
+
+    const sectionId = cart.dataset.sectionId;
     const error = cart.querySelector('[data-cart-error]');
 
     cart.setAttribute('aria-busy', 'true');
@@ -616,7 +643,7 @@
       const response = await fetch(`${window.Shopify?.routes?.root || '/'}cart/change.js`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ line, quantity, sections: [sectionId], sections_url: window.location.pathname }),
+        body: JSON.stringify({ ...change, sections: [sectionId], sections_url: window.location.pathname }),
       });
       const data = await response.json();
 
@@ -643,9 +670,10 @@
       });
     } catch (e) {
       // Ako fetch ne uspe, idi na običan link (stari način, sa osvežavanjem)
-      window.location.href = link.href;
+      if (fallbackUrl) window.location.href = fallbackUrl;
+      else window.location.reload();
     }
-  });
+  }
 
   // Promo kod: Shopify ga primenjuje preko /discount/KOD, pa vraća na korpu
   document.addEventListener('submit', (event) => {

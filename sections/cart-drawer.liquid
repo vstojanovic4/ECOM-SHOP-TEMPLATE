@@ -77,10 +77,19 @@
                     </dl>
                   {%- endunless -%}
 
+                  {% render 'cart-selling-plan', item: item, line: line, id_prefix: 'CartDrawerPlan' %}
+
+                  {%- liquid
+                    # A subscription discount is part of the price, so compare with the regular price
+                    assign compare_line = item.original_line_price
+                    if item.selling_plan_allocation.compare_at_price > item.selling_plan_allocation.price
+                      assign compare_line = item.selling_plan_allocation.compare_at_price | times: item.quantity
+                    endif
+                  -%}
                   <div class="cart-drawer-item__bottom">
                     <div class="cart-drawer-item__price">
-                      {%- if item.original_line_price > item.final_line_price -%}
-                        <s>{{ item.original_line_price | money_without_trailing_zeros }}</s>
+                      {%- if compare_line > item.final_line_price -%}
+                        <s>{{ compare_line | money_without_trailing_zeros }}</s>
                       {%- endif -%}
                       <span>{{ item.final_line_price | money_without_trailing_zeros }}</span>
                     </div>
@@ -532,6 +541,11 @@
           if (button) this.changeLine(button);
         }, options);
 
+        this.addEventListener('change', (event) => {
+          const select = event.target.closest('[data-cart-plan]');
+          if (select) this.changePlan(select);
+        }, options);
+
         // Escape key: close with the slide-out animation
         this.dialog.addEventListener('cancel', (event) => {
           event.preventDefault();
@@ -627,13 +641,31 @@
         error.hidden = false;
       }
 
-      async changeLine(button) {
-        if (this.busy) return;
-        this.busy = true;
-
+      changeLine(button) {
         const line = Number(button.dataset.line);
         const quantity = Number(button.dataset.quantity);
         const action = button.dataset.action;
+
+        this.sendChange({ line, quantity }, () => {
+          // Keep keyboard focus on the same button; if the item is gone, go to the close button
+          const sameButton = quantity > 0
+            && this.querySelector(`[data-drawer-change][data-line="${line}"][data-action="${action}"]`);
+          (sameButton || this.querySelector('[data-drawer-close]'))?.focus();
+        });
+      }
+
+      // One-time purchase <-> subscription; an empty value removes the selling plan
+      changePlan(select) {
+        const line = Number(select.dataset.line);
+        this.sendChange(
+          { line, quantity: Number(select.dataset.quantity), selling_plan: select.value || null },
+          () => this.querySelector(`[data-cart-plan][data-line="${line}"]`)?.focus(),
+        );
+      }
+
+      async sendChange(change, restoreFocus) {
+        if (this.busy) return;
+        this.busy = true;
         this.querySelector('[data-drawer-content]')?.setAttribute('aria-busy', 'true');
 
         try {
@@ -641,8 +673,7 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({
-              line,
-              quantity,
+              ...change,
               sections: this.sectionIds,
               sections_url: window.location.pathname,
             }),
@@ -656,11 +687,7 @@
           }
 
           this.render(data.sections);
-
-          // Keep keyboard focus on the same button; if the item is gone, go to the close button
-          const sameButton = quantity > 0
-            && this.querySelector(`[data-drawer-change][data-line="${line}"][data-action="${action}"]`);
-          (sameButton || this.querySelector('[data-drawer-close]'))?.focus();
+          restoreFocus();
         } catch (error) {
           this.showError();
         } finally {

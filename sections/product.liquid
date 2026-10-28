@@ -216,6 +216,81 @@
               {%- if current_variant.available -%}{{ s.add_label | escape }}{%- else -%}{{ s.sold_out_label | escape }}{%- endif -%}
             </button>
           </div>
+
+          {%- comment -%} Subscriptions: only for products that have a selling plan (Shopify Subscriptions app) {%- endcomment -%}
+          {%- if product.selling_plan_groups.size > 0 -%}
+            {%- liquid
+              assign max_saving = 0
+              assign first_plan = nil
+              for group in product.selling_plan_groups
+                for plan in group.selling_plans
+                  if first_plan == nil
+                    assign first_plan = plan
+                  endif
+                  assign adjustment = plan.price_adjustments.first
+                  if adjustment.value_type == 'percentage' and adjustment.value > max_saving
+                    assign max_saving = adjustment.value
+                  endif
+                endfor
+              endfor
+              assign selected_allocation = nil
+              for allocation in current_variant.selling_plan_allocations
+                if allocation.selling_plan.id == first_plan.id
+                  assign selected_allocation = allocation
+                endif
+              endfor
+              assign subscribe = false
+              if product.requires_selling_plan
+                assign subscribe = true
+              endif
+            -%}
+            <div class="pdp__plans" data-plans>
+              <input type="hidden" name="selling_plan" value="{{ first_plan.id }}" data-plan-input{% unless subscribe %} disabled{% endunless %}>
+              <p class="pdp__plans-label" id="{{ section.id }}-plans-label">Purchase options</p>
+
+              <div class="pdp__plan-cards" role="radiogroup" aria-labelledby="{{ section.id }}-plans-label">
+                {%- unless product.requires_selling_plan -%}
+                  <label class="pdp__plan-card">
+                    <input type="radio" class="pdp__plan-radio" name="purchase_type" value="once" checked data-purchase-type>
+                    <span class="pdp__plan-name">One-time purchase</span>
+                    <span class="pdp__plan-price" data-once-price>{{ current_variant.price | money_without_trailing_zeros }}</span>
+                  </label>
+                {%- endunless -%}
+                <label class="pdp__plan-card">
+                  <input type="radio" class="pdp__plan-radio" name="purchase_type" value="subscribe"{% if subscribe %} checked{% endif %} data-purchase-type>
+                  <span class="pdp__plan-name">
+                    Subscribe &amp; save
+                    {%- if max_saving > 0 -%}<span class="pdp__badge pdp__plan-badge">Up to {{ max_saving }}% off</span>{%- endif -%}
+                  </span>
+                  <span class="pdp__plan-price" data-plan-price>{{ selected_allocation.price | default: current_variant.price | money_without_trailing_zeros }}</span>
+                </label>
+              </div>
+
+              <fieldset class="pdp__plan-options" data-plan-options{% unless subscribe %} hidden{% endunless %}>
+                <legend class="pdp__plans-label">Delivery frequency</legend>
+                <div class="pdp__pills">
+                  {%- for group in product.selling_plan_groups -%}
+                    {%- for plan in group.selling_plans -%}
+                      {%- assign plan_input_id = section.id | append: '-plan-' | append: plan.id -%}
+                      <input type="radio" class="pdp__plan-radio" id="{{ plan_input_id }}" name="plan_choice" value="{{ plan.id }}"{% if plan.id == first_plan.id %} checked{% endif %} data-plan-radio>
+                      <label for="{{ plan_input_id }}" class="pdp__pill">{{ plan.name | escape }}</label>
+                    {%- endfor -%}
+                  {%- endfor -%}
+                </div>
+              </fieldset>
+            </div>
+          {%- endif -%}
+
+          {%- comment -%} App blocks (e.g. subscriptions) stay inside the form, so their inputs (selling_plan) are sent with Add to Cart {%- endcomment -%}
+          {%- if section.blocks.size > 0 -%}
+            <div class="pdp__apps">
+              {%- for block in section.blocks -%}
+                {%- if block.type == '@app' -%}
+                  <div {{ block.shopify_attributes }}>{% render block %}</div>
+                {%- endif -%}
+              {%- endfor -%}
+            </div>
+          {%- endif -%}
         {%- endform -%}
       </div>
     </div>
@@ -238,7 +313,12 @@
           "price": {{ variant.price | money_without_trailing_zeros | json }},
           "compare": {{ variant.compare_at_price | money_without_trailing_zeros | json }},
           "discount": {{ v_discount }},
-          "media": {{ variant.featured_media.id | default: 'null' }}
+          "media": {{ variant.featured_media.id | default: 'null' }},
+          "plans": {
+            {%- for allocation in variant.selling_plan_allocations -%}
+              "{{ allocation.selling_plan.id }}": {{ allocation.price | money_without_trailing_zeros | json }}{% unless forloop.last %},{% endunless %}
+            {%- endfor -%}
+          }
         }{% unless forloop.last %},{% endunless %}
       {%- endfor -%}
     ]
@@ -676,6 +756,95 @@
     gap: 20px;
     padding-top: 24px;
   }
+  .pdp__apps {
+    padding-top: 20px;
+  }
+
+  /* ---------- Subscriptions ---------- */
+  .pdp__plans {
+    padding-top: 24px;
+  }
+  .pdp__plans-label {
+    margin: 0 0 12px;
+    padding: 0;
+    font-size: 16px;
+    color: rgba(0, 0, 0, 0.6);
+  }
+  .pdp__plan-cards {
+    display: grid;
+    gap: 12px;
+  }
+  .pdp__plan-card {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+    padding: 12px 20px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 20px;
+    color: #000;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  /* Round radio dot, drawn with CSS */
+  .pdp__plan-card::before {
+    content: '';
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid rgba(0, 0, 0, 0.3);
+    border-radius: 50%;
+    box-sizing: border-box;
+  }
+  .pdp__plan-card:has(:checked) {
+    border-color: #000;
+  }
+  .pdp__plan-card:has(:checked)::before {
+    border: 5px solid #000;
+  }
+  .pdp__plan-card:has(:focus-visible) {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
+  .pdp__plan-radio {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .pdp__plan-name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 500;
+  }
+  .pdp__plan-badge {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  .pdp__plan-price {
+    margin-left: auto;
+    font-size: 18px;
+    font-weight: 700;
+  }
+  .pdp__plan-options {
+    margin: 16px 0 0;
+    padding: 0;
+    border: 0;
+  }
+  .pdp__plan-options[hidden] {
+    display: none;
+  }
+  .pdp__plan-radio:checked + .pdp__pill {
+    background: #000;
+    color: #fff;
+  }
+  .pdp__plan-radio:focus-visible + .pdp__pill {
+    outline: 2px solid #000;
+    outline-offset: 2px;
+  }
   .pdp__qty {
     display: flex;
     align-items: center;
@@ -1017,6 +1186,25 @@
       });
     });
 
+    // Subscriptions: one-time or a selling plan; the hidden selling_plan input is sent only when subscribing
+    const plans = pdp.querySelector('[data-plans]');
+    let currentVariant = variants.find((v) => String(v.id) === idInput.value);
+    const updatePlans = () => {
+      if (!plans) return;
+      const subscribe = plans.querySelector('[data-purchase-type]:checked')?.value === 'subscribe';
+      const plan = plans.querySelector('[data-plan-radio]:checked');
+      const planInput = plans.querySelector('[data-plan-input]');
+      plans.querySelector('[data-plan-options]').hidden = !subscribe;
+      planInput.disabled = !subscribe || !plan;
+      if (plan) planInput.value = plan.value;
+
+      if (!currentVariant) return;
+      const oncePrice = plans.querySelector('[data-once-price]');
+      if (oncePrice) oncePrice.textContent = currentVariant.price;
+      plans.querySelector('[data-plan-price]').textContent = (plan && currentVariant.plans[plan.value]) || currentVariant.price;
+    };
+    plans?.addEventListener('change', updatePlans);
+
     // Opcije: pronađi varijantu koja odgovara izabranim vrednostima
     form.addEventListener('change', (event) => {
       if (!event.target.classList.contains('pdp__radio')) return;
@@ -1035,6 +1223,10 @@
       }
 
       idInput.value = variant.id;
+      currentVariant = variant;
+      updatePlans();
+      // Let app blocks (subscriptions) know the variant changed, so they show its prices
+      idInput.dispatchEvent(new Event('change', { bubbles: true }));
       addButton.disabled = !variant.available;
       addButton.textContent = variant.available ? addLabel : soldOutLabel;
 
@@ -1063,6 +1255,9 @@
     { "type": "text", "id": "add_label", "label": "Button text", "default": "Add to Cart" },
     { "type": "text", "id": "sold_out_label", "label": "Sold out text", "default": "Sold out" },
     { "type": "text", "id": "unavailable_label", "label": "Unavailable combination text", "default": "Unavailable" }
+  ],
+  "blocks": [
+    { "type": "@app" }
   ],
   "disabled_on": {
     "groups": ["header", "footer"]
